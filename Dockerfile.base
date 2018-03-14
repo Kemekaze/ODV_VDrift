@@ -16,7 +16,8 @@ RUN cd /app \
  && apt-get install -y \
     wget \
     git \
-    tar
+    tar \
+    iputils-ping
 
 
 #Install VDrift
@@ -37,13 +38,15 @@ RUN apt-get update -y \
  && rm ${VDRIFT_FILE}
 
 #install OpenDaVINCHI - needed?
-#RUN wget -O - -q \
-#    http://opendavinci.cse.chalmers.se/opendavinci.cse.chalmers.se.gpg.key \
-#    | apt-key add - \
-# && echo "deb http://opendavinci.cse.chalmers.se/ubuntu/ xenial main" \
-#    | tee -a /etc/apt/sources.list \
-# && apt-get update -y \
-# && apt-get install -y \
-#    opendavinci-lib \
-#    opendavinci-odtools \
-#    opendavinci-odsupercomponent
+RUN wget -O - -q \
+    http://opendavinci.cse.chalmers.se/opendavinci.cse.chalmers.se.gpg.key \
+    | apt-key add - \
+ && echo "deb http://opendavinci.cse.chalmers.se/ubuntu/ xenial main" \
+    | tee -a /etc/apt/sources.list \
+ && add-apt-repository ppa:chrberger/libcluon \
+ && apt-get update -y \
+ && apt-get install -y \
+    opendavinci-lib \
+    opendavinci-odtools \
+    opendavinci-odsupercomponent \
+	libcluon

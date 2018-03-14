@@ -1,1 +1,2 @@
-echo 'HELLO FROM DOCKER';
+cd ./vdrift/build
+./vdrift
