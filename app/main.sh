@@ -1,2 +1,2 @@
-cd ./vdrift/build
-./vdrift
+./vdrift/build/vdrift 
+./build/vDODV

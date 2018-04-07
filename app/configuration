@@ -1,0 +1,3 @@
+odsupercomponent.pulsetimeack.timeout = 5000 # (in milliseconds)
+odsupercomponent.pulsetimeack.exclude = odcockpit
+odcockpit.directoriesForSharedLibaries = /opt/opendlv.miniature

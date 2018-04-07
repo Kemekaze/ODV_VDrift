@@ -7,24 +7,33 @@ FROM kemekaze/odv_vdrift_base:latest
 WORKDIR /app
 
 ENV HOME /app
-ENV USR vdrift
+#ENV USR vDODV
 
-# Copy the app directory contents into the container at /app
 ADD ./app /app
 
-RUN useradd --home-dir $HOME $USR \
-	&& chown -R $USR:$USR $HOME
+#RUN useradd --home-dir $HOME $USR \
+# && chown -R $USR:$USR $HOME
 
-USER vdrift
+#USER $USR
 
 #Compile VDrift
 RUN cd /app/vdrift && scons prefix=/app/vdrift datadir=data && cd /app
 
 RUN mkdir $HOME/.vdrift/ \
  && mv $HOME/VDrift.config $HOME/.vdrift/.
-RUN ls -la /app/.vdrift
+
+#RUN mkdir -p /opt/od \
+# && chown $USER:$USER /opt/od \
+# && cd OpenDaVINCI && mkdir build \
+# && cd build \
+# && cmake -D CMAKE_INSTALL_PREFIX=/opt/od .. \
+# && make
+
+RUN mkdir build \
+ && cd build \
+ && cmake -D CMAKE_BUILD_TYPE=Release .. \
+ && make vDODV
 
 
 
-
-CMD ["bash", "main.sh"]
+CMD ["bash","./main.sh"]
