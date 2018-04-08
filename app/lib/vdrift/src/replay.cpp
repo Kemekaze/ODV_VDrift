@@ -22,7 +22,6 @@
 #include "cfg/ptree.h"
 #include "physics/carinput.h"
 #include "physics/cardynamics.h"
-#include "joeserialize.h"
 
 #include <sstream>
 #include <fstream>
@@ -48,9 +47,9 @@ bool Replay::StartPlaying(const std::string & replayfilename, std::ostream & err
 	if (!Load(replaystream, error_output))
 		return false;
 
-	for (auto & state : carstate)
+	for (size_t i = 0; i < carstate.size(); ++i)
 	{
-		state.Reset();
+		carstate[i].Reset();
 	}
 
 	replaymode = PLAYING;
@@ -69,7 +68,7 @@ void Replay::Reset()
 void Replay::StartRecording(
 	const std::vector<CarInfo> & ncarinfo,
 	const std::string & trackname,
-	std::ostream & /*error_log*/)
+	std::ostream & error_log)
 {
 	Reset();
 
@@ -78,9 +77,9 @@ void Replay::StartRecording(
 	track = trackname;
 
 	carstate.resize(carinfo.size());
-	for (auto & state : carstate)
+	for (size_t i = 0; i < carstate.size(); ++i)
 	{
-		state.Reset();
+		carstate[i].Reset();
 	}
 }
 
@@ -204,6 +203,14 @@ void Replay::CarState::ProcessPlayStateFrame(const StateFrame & frame, CarDynami
 	car.Serialize(serialize_input);
 }
 
+bool Replay::Serialize(joeserialize::Serializer & s)
+{
+	_SERIALIZE_(s, track);
+	_SERIALIZE_(s, carinfo);
+	_SERIALIZE_(s, carstate);
+	return true;
+}
+
 void Replay::Save(std::ostream & outstream)
 {
 	// write the file format version data manually
@@ -262,6 +269,13 @@ Replay::Version::Version(const std::string & ver,  unsigned ins, float newfr) :
 	// ctor
 }
 
+bool Replay::Version::Serialize(joeserialize::Serializer & s)
+{
+	_SERIALIZE_(s, inputs_supported);
+	_SERIALIZE_(s, framerate);
+	return true;
+}
+
 void Replay::Version::Save(std::ostream & outstream)
 {
 	// write the file format version data manually
@@ -309,6 +323,13 @@ Replay::InputFrame::InputFrame(unsigned newframe) :
 	// ctor
 }
 
+bool Replay::InputFrame::Serialize(joeserialize::Serializer & s)
+{
+	_SERIALIZE_(s, frame);
+	_SERIALIZE_(s, inputs);
+	return true;
+}
+
 void Replay::InputFrame::AddInput(int index, float value)
 {
 	inputs.push_back(std::make_pair(index, value));
@@ -340,6 +361,14 @@ Replay::StateFrame::StateFrame(unsigned newframe) :
 	frame(newframe)
 {
 	// ctor
+}
+
+bool Replay::StateFrame::Serialize(joeserialize::Serializer & s)
+{
+	_SERIALIZE_(s, frame);
+	_SERIALIZE_(s, binary_state_data);
+	_SERIALIZE_(s, input_snapshot);
+	return true;
 }
 
 void Replay::StateFrame::SetBinaryStateData(const std::string & value)
@@ -381,15 +410,20 @@ void Replay::CarState::Reset()
 	frame = 0;
 }
 
-/* FIXME
+bool Replay::CarState::Serialize(joeserialize::Serializer & s)
+{
+	_SERIALIZE_(s, inputframes);
+	_SERIALIZE_(s, stateframes);
+	return true;
+}
+
 QT_TEST(replay_test)
 {
-	// basic version validity check
+	/*//basic version validity check
 	{
 		REPLAY replay(0.004);
 		std::ostringstream teststream;
 		replay.Save(teststream);
 		QT_CHECK(replay.Load(teststream, std::cerr));
-	}
+	}*/
 }
-*/

@@ -41,17 +41,12 @@ bool starts_with_1(const std::string & s) {return (s[0] == '1');}
 
 std::ostream & operator << (std::ostream &os, const vector <string> & v)
 {
-	for (const auto & s : v)
+	for (size_t i = 0; i < v.size()-1; i++)
 	{
-		os << s << ", ";
+		os << v[i] << ", ";
 	}
 	os << v[v.size()-1];// << std::endl;
 	return os;
-}
-
-static int string_length(const std::string & str)
-{
-	return str.length();
 }
 
 QT_TEST(calgo_test)
@@ -77,7 +72,7 @@ QT_TEST(calgo_test)
 	QT_CHECK_EQUAL(vec3[1], "133");
 
 	vector <int> vec4(vec.size());
-	calgo::transform(vec, vec4.begin(), string_length);
+	calgo::transform(vec, vec4.begin(), std::mem_fun_ref(&string::length));
 	QT_CHECK_EQUAL(vec4.size(), 3);
 	QT_CHECK_EQUAL(vec4[0], 4);
 	QT_CHECK_EQUAL(vec4[1], 4);

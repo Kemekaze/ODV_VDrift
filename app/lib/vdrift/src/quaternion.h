@@ -21,13 +21,17 @@
 #define _QUATERNION_H
 
 #include "mathvector.h"
+#include "joeserialize.h"
 
+#include <vector>
 #include <cassert>
 #include <cmath>
+#include <iostream>
 
 template <typename T>
 class Quaternion
 {
+friend class joeserialize::Serializer;
 private:
 	T v[4]; //x y z w
 
@@ -107,15 +111,15 @@ public:
 	///return the magnitude of the quaternion
 	const T Magnitude() const
 	{
-		return std::sqrt(v[3]*v[3]+v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+		return sqrt(v[3]*v[3]+v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
 	}
 
 	///normalize this quaternion
 	void Normalize()
 	{
-		T n = 1 / Magnitude();
-		for (auto & i : v)
-			i *= n;
+		T len = Magnitude();
+		for (size_t i = 0; i < 4; i++)
+			v[i] /= len;
 	}
 
 	///set the given matrix to a matrix representation of this quaternion.
@@ -136,19 +140,19 @@ public:
 		T zz = v[2]*v[2];
 		T zw = v[2]*v[3];
 
-		destmat[0] = 1-2*(yy+zz);
-		destmat[1] = 2*(xy+zw);
-		destmat[2] = 2*(xz-yw);
+		destmat[0] = 1.0 - 2.0*(yy+zz);
+		destmat[1] = 2.0*(xy+zw);
+		destmat[2] = 2.0*(xz-yw);
 		destmat[3] = 0;
 
-		destmat[4] = 2*(xy-zw);
-		destmat[5] = 1-2*(xx+zz);
-		destmat[6] = 2*(yz+xw);
+		destmat[4] = 2.0*(xy-zw);
+		destmat[5] = 1.0-2.0*(xx+zz);
+		destmat[6] = 2.0*(yz+xw);
 		destmat[7] = 0;
 
-		destmat[8] = 2*(xz+yw);
-		destmat[9] = 2*(yz-xw);
-		destmat[10] = 1-2*(xx+yy);
+		destmat[8] = 2.0*(xz+yw);
+		destmat[9] = 2.0*(yz-xw);
+		destmat[10] = 1.0-2.0*(xx+yy);
 		destmat[11] = 0;
 
 		destmat[12] = 0;
@@ -175,17 +179,17 @@ public:
 		T zz = v[2]*v[2];
 		T zw = v[2]*v[3];
 
-		destmat[0] = 1-2*(yy+zz);
-		destmat[1] = 2*(xy+zw);
-		destmat[2] = 2*(xz-yw);
+		destmat[0] = 1.0 - 2.0*(yy+zz);
+		destmat[1] = 2.0*(xy+zw);
+		destmat[2] = 2.0*(xz-yw);
 
-		destmat[3] = 2*(xy-zw);
-		destmat[4] = 1-2*(xx+zz);
-		destmat[5] = 2*(yz+xw);
+		destmat[3] = 2.0*(xy-zw);
+		destmat[4] = 1.0-2.0*(xx+zz);
+		destmat[5] = 2.0*(yz+xw);
 
-		destmat[6] = 2*(xz+yw);
-		destmat[7] = 2*(yz-xw);
-		destmat[8] = 1-2*(xx+yy);
+		destmat[6] = 2.0*(xz+yw);
+		destmat[7] = 2.0*(yz-xw);
+		destmat[8] = 1.0-2.0*(xx+yy);
 	}
 
 	MathVector<T, 3> AxisX() const
@@ -196,7 +200,7 @@ public:
 		T yw = v[1]*v[3];
 		T zz = v[2]*v[2];
 		T zw = v[2]*v[3];
-		return MathVector<T, 3>(1-2*(yy+zz), 2*(xy+zw), 2*(xz-yw));
+		return MathVector<T, 3>(1.0-2.0*(yy+zz), 2.0*(xy+zw), 2.0*(xz-yw));
 	}
 
 	MathVector<T, 3> AxisY() const
@@ -207,7 +211,7 @@ public:
 		T yz = v[1]*v[2];
 		T zz = v[2]*v[2];
 		T zw = v[2]*v[3];
-		return MathVector<T, 3>(2*(xy-zw), 1-2*(xx+zz), 2*(yz+xw));
+		return MathVector<T, 3>(2.0*(xy-zw), 1.0-2.0*(xx+zz), 2.0*(yz+xw));
 	}
 
 	MathVector<T, 3> AxisZ() const
@@ -218,7 +222,7 @@ public:
 		T yy = v[1]*v[1];
 		T yz = v[1]*v[2];
 		T yw = v[1]*v[3];
-		return MathVector<T, 3>(2*(xz+yw), 2*(yz-xw), 1-2*(xx+yy));
+		return MathVector<T, 3>(2.0*(xz+yw), 2.0*(yz-xw), 1.0-2.0*(xx+yy));
 	}
 
 	///has the potential to return a un-normalized quaternion
@@ -236,10 +240,10 @@ public:
 		H = (v[3] - v[1])*(quat2.v[3] + quat2.v[2]);
 
 
-		Quaternion output(A - (E + F + G + H)*T(0.5),
-			C + (E - F + G - H)*T(0.5),
-			D + (E - F - G + H)*T(0.5),
-			B + (-E - F + G + H)*T(0.5));
+		Quaternion output(A - (E + F + G + H)*0.5,
+			C + (E - F + G - H)*0.5,
+			D + (E - F - G + H)*0.5,
+			B + (-E - F + G + H)*0.5);
 		return output;
 	}
 
@@ -314,8 +318,9 @@ public:
 	/// a is in radians.  the axis is assumed to be a unit vector
 	void SetAxisAngle(const T & a, const T & ax, const T & ay, const T & az)
 	{
-		T sina2 = std::sin(a/2);
-		v[3] = std::cos(a/2);
+		T sina2 = sin(a/2);
+
+		v[3] = cos(a/2);
 		v[0] = ax * sina2;
 		v[1] = ay * sina2;
 		v[2] = az * sina2;
@@ -324,12 +329,12 @@ public:
 	///set the quaternion using Euler angles
 	void SetEulerZYX(const T & x, const T & y, const T & z)
 	{
-		T cosx2 = std::cos(x/2);
-		T cosy2 = std::cos(y/2);
-		T cosz2 = std::cos(z/2);
-		T sinx2 = std::sin(x/2);
-		T siny2 = std::sin(y/2);
-		T sinz2 = std::sin(z/2);
+		T cosx2 = cos(x/2);
+		T cosy2 = cos(y/2);
+		T cosz2 = cos(z/2);
+		T sinx2 = sin(x/2);
+		T siny2 = sin(y/2);
+		T sinz2 = sin(z/2);
 		v[0] = sinx2 * cosy2 * cosz2 - cosx2 * siny2 * sinz2;
 		v[1] = cosx2 * siny2 * cosz2 + sinx2 * cosy2 * sinz2;
 		v[2] = cosx2 * cosy2 * sinz2 - sinx2 * siny2 * cosz2;
@@ -338,9 +343,9 @@ public:
 
 	void GetEulerZYX(T & x, T & y, T & z)
 	{
-		x = std::atan2(2 * (v[1] * v[2] + v[0] * v[3]), -v[0] * v[0] - v[1] * v[1] + v[2] * v[2] + v[3] * v[3]);
-		y = std::asin(-2 * (v[0] * v[2] - v[1] * v[3]));
-		z = std::atan2(2 * (v[0] * v[1] + v[2] * v[3]),  v[0] * v[0] - v[1] * v[1] - v[2] * v[2] + v[3] * v[3]);
+		x = atan2(2 * (v[1] * v[2] + v[0] * v[3]), -v[0] * v[0] - v[1] * v[1] + v[2] * v[2] + v[3] * v[3]);
+		y = asin(-2 * (v[0] * v[2] - v[1] * v[3]));
+		z = atan2(2 * (v[0] * v[1] + v[2] * v[3]),  v[0] * v[0] - v[1] * v[1] - v[2] * v[2] + v[3] * v[3]);
 	}
 
 	///rotate a vector (accessible with []) by this quaternion
@@ -382,7 +387,7 @@ public:
 		T dotprod(0);
 		for (size_t i = 0; i < 3; i++)
 			dotprod += vec1[i]*vec2[i];
-		return std::acos(dotprod);
+		return acos(dotprod);
 	}
 
 	///interpolate between this quaternion and another by scalar amount t [0,1] and return the result
@@ -396,7 +401,7 @@ public:
 			+ v[3] * quat2.v[3];
 
 		//adjust signs (if necessary)
-		if (cosom < 0)
+		if (cosom < 0.0)
 		{
 			cosom = -cosom;
 			to1[0] = -quat2.v[0];
@@ -415,19 +420,19 @@ public:
 		const T DELTA(0.00001);
 
 		//calculate coefficients
-		if (1 - cosom > DELTA)
+		if (1.0 - cosom > DELTA)
 		{
 			//standard case (slerp)
-			omega = std::acos(cosom);
-			sinom = std::sin(omega);
-			scale0 = std::sin((1 - t) * omega) / sinom;
-			scale1 = std::sin(t * omega) / sinom;
+			omega = acos(cosom);
+			sinom = sin(omega);
+			scale0 = sin((1.0 - t) * omega) / sinom;
+			scale1 = sin(t * omega) / sinom;
 		}
 		else
 		{
 			//"from" and "to" quaternions are very close
 			//... so we can do a linear interpolation
-			scale0 = 1 - t;
+			scale0 = 1.0 - t;
 			scale1 = t;
 		}
 
@@ -441,8 +446,7 @@ public:
 		return qout;
 	}
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
 		if (!s.Serialize("x",v[0])) return false;
 		if (!s.Serialize("y",v[1])) return false;
@@ -452,8 +456,8 @@ public:
 	}
 };
 
-template <typename T, class Stream>
-Stream & operator << (Stream & os, const Quaternion <T> & v)
+template <typename T>
+std::ostream & operator << (std::ostream &os, const Quaternion <T> & v)
 {
 	os << "x=" << v[0] << ", y=" << v[1] << ", z=" << v[2] << ", w=" << v[3];
 	return os;

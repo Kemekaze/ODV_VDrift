@@ -21,73 +21,115 @@
 #define _AABB_H
 
 #include "mathvector.h"
-#include "minmax.h"
+#include "frustum.h"
+#include <ostream>
 
 template <typename T>
 class Aabb
 {
 public:
-	Aabb() : radius(0) {}
-
-	Aabb(const Aabb<T> & other) :
-		center(other.center), extent(other.extent), radius(other.radius) {}
-
-	Aabb(const MathVector<T, 3> & min, const MathVector<T, 3> & max)
+	Aabb(const Aabb <T> & other) :
+		pos(other.pos), center(other.center), size(other.size), radius(other.radius)
 	{
-		center = (max + min) * T(0.5);
-		extent = (max - min) * T(0.5);
-		radius = extent.Magnitude();
+		// ctor
 	}
 
-	Aabb<T> & operator=(const Aabb<T> & other)
+	Aabb(const MathVector <T, 3> & min, const MathVector <T, 3> & max)
 	{
+		pos = min;
+		center = (min + max) * 0.5;
+		size = max - min;
+		radius = size.Magnitude() * 0.5;
+	}
+
+	Aabb() : radius(0) {}
+
+	Aabb <T> & operator = (const Aabb <T> & other)
+	{
+		pos = other.pos;
 		center = other.center;
-		extent = other.extent;
+		size = other.size;
 		radius = other.radius;
 		return *this;
 	}
 
-	const MathVector<T, 3> & GetCenter() const
+	const MathVector <T, 3> & GetPos() const {return pos;}
+
+	const MathVector <T, 3> & GetSize() const {return size;}
+
+	const MathVector <T, 3> & GetCenter() const {return center;}
+
+	void DebugPrint(std::ostream & o) const
 	{
-		return center;
+		MathVector <T, 3> min(pos);
+		MathVector <T, 3> max(pos+size);
+		o << min[0] << "," << min[1] << "," << min[2] << " to " << max[0] << "," << max[1] << "," << max[2] << std::endl;
 	}
 
-	const MathVector<T, 3> & GetExtent() const
+	void DebugPrint2(std::ostream & o) const
 	{
-		return extent;
+		o << "center: " << center[0] << "," << center[1] << "," << center[2] << " size: " << size[0] << "," << size[1] << "," << size[2] << std::endl;
 	}
 
-	T GetRadius() const
+	void SetFromSphere(const MathVector <T, 3> & newcenter, float newRadius)
 	{
-		return radius;
+		center = newcenter;
+		size.Set(newRadius,newRadius,newRadius);
+		size = size * 2.0;
+		pos = center - size*0.5;
+		radius = newRadius;
 	}
 
-	void SetFromSphere(const MathVector<T, 3> & ncenter, float nradius)
+	void SetFromCorners(const MathVector <T, 3> & c1, const MathVector <T, 3> & c2)
 	{
-		center = ncenter;
-		extent.Set(nradius, nradius, nradius);
-		radius = nradius;
-	}
+		MathVector <T, 3> c1mod(c1);
+		MathVector <T, 3> c2mod(c2);
 
-	void SetFromCorners(const MathVector<T, 3> & c1, const MathVector<T, 3> & c2)
-	{
-		center = (c1 + c2) * T(0.5);
-		extent = (c1 - c2) * T(0.5);
-		extent.absify();
-		radius = extent.Magnitude();
-	}
-
-	void CombineWith(const Aabb<T> & other)
-	{
-		auto min = center - extent;
-		auto max = center + extent;
-		auto omin = other.center - other.extent;
-		auto omax = other.center + other.extent;
-		for (int i = 0; i < 3; i++)
+		//ensure c1 is smaller than c2
+		if (c1[0] > c2[0])
 		{
-			min[i] = Min(min[i], omin[i]);
-			max[i] = Max(max[i], omax[i]);
+			c1mod[0] = c2[0];
+			c2mod[0] = c1[0];
 		}
+		if (c1[1] > c2[1])
+		{
+			c1mod[1] = c2[1];
+			c2mod[1] = c1[1];
+		}
+		if (c1[2] > c2[2])
+		{
+			c1mod[2] = c2[2];
+			c2mod[2] = c1[2];
+		}
+
+		pos = c1mod;
+		size = c2mod - c1mod;
+		center = pos + size * 0.5;
+		radius = size.Magnitude() * 0.5;
+	}
+
+	void CombineWith(const Aabb <T> & other)
+	{
+		const MathVector <T, 3> othermin = other.GetPos();
+		const MathVector <T, 3> othermax = othermin + other.GetSize();
+
+		MathVector <T, 3> min = pos;
+		MathVector <T, 3> max = pos + size;
+
+		if (othermin[0] < min[0])
+			min[0] = othermin[0];
+		if (othermin[1] < min[1])
+			min[1] = othermin[1];
+		if (othermin[2] < min[2])
+			min[2] = othermin[2];
+
+		if (othermax[0] > max[0])
+			max[0] = othermax[0];
+		if (othermax[1] > max[1])
+			max[1] = othermax[1];
+		if (othermax[2] > max[2])
+			max[2] = othermax[2];
+
 		*this = Aabb(min, max);
 	}
 
@@ -104,89 +146,111 @@ public:
 		// placebo
 	};
 
-	struct Ray
+	class Ray
 	{
-		Ray(const MathVector<T, 3> & norig, const MathVector<T, 3> & ndir, T nseglen) :
-			orig(norig), dir(ndir), seglen(nseglen) {}
+		public:
+			Ray(const MathVector <T, 3> & neworig, const MathVector <T, 3> & newdir, T newseglen) : orig(neworig), dir(newdir), seglen(newseglen) {}
 
-		MathVector<T, 3> orig;
-		MathVector<T, 3> dir;
-		T seglen;
+			MathVector <T, 3> orig;
+			MathVector <T, 3> dir;
+			T seglen;
 	};
 
 	IntersectionEnum Intersect(const Ray & ray) const
 	{
-		auto d = ray.orig - center;
+		//if (seglen>3e30f) return IntersectRay(orig, dir); // infinite ray
+		MathVector <T, 3> segdir(ray.dir * (0.5f * ray.seglen));
+		MathVector <T, 3> seg_center(ray.orig + segdir);
+		MathVector <T, 3> diff(seg_center - center);
 
-		// bounding box
-		auto s = ray.seglen * T(0.5);
-		for (int i = 0; i < 3; i++)
-		{
-			auto e = ray.dir[i] * s;
-			if (std::abs(d[i] + e) > extent[i] + std::abs(e))
-				return OUT;
-		}
+		MathVector <T, 3> abs_segdir(segdir);
+		abs_segdir.absify();
+		MathVector <T, 3> abs_diff(diff);
+		abs_diff.absify();
+		T f = size[0] + abs_segdir[0];
+		if (abs_diff[0] > f) return OUT;
+		f = size[1] + abs_segdir[1];
+		if (abs_diff[1] > f) return OUT;
+		f = size[2] + abs_segdir[2];
+		if (abs_diff[2] > f) return OUT;
 
-		// separating axis
-		auto c = ray.dir.cross(d);
-		auto a = ray.dir;
-		a.absify();
+		MathVector <T, 3> cross(segdir.cross(diff));
 
-		if (std::abs(c[0]) > extent[1] * a[2] + extent[2] * a[1])
+		MathVector <T, 3> abs_cross(cross);
+		abs_cross.absify();
+
+		f = size[1]*abs_segdir[2] + size[2]*abs_segdir[1];
+		if ( abs_cross[0] > f ) return OUT;
+
+		f = size[2]*abs_segdir[0] + size[0]*abs_segdir[2];
+		if ( abs_cross[1] > f ) return OUT;
+
+		f = size[0]*abs_segdir[1] + size[1]*abs_segdir[0];
+		if ( abs_cross[2] > f ) return OUT;
+
+		return INTERSECT;
+	}
+
+	IntersectionEnum Intersect(const Aabb <T> & other) const
+	{
+		MathVector <T, 3> otherc1 = other.GetPos();
+		MathVector <T, 3> otherc2 = otherc1 + other.GetSize();
+
+		MathVector <T, 3> c1 = pos;
+		MathVector <T, 3> c2 = pos + size;
+
+		//bias checks for non-collisions
+		if (c1[0] > otherc2[0] || c2[0] < otherc1[0])
 			return OUT;
 
-		if (std::abs(c[1]) > extent[0] * a[2] + extent[2] * a[0])
+		if (c1[2] > otherc2[2] || c2[2] < otherc1[2])
 			return OUT;
 
-		if (std::abs(c[2]) > extent[0] * a[1] + extent[1] * a[0])
+		if (c1[1] > otherc2[1] || c2[1] < otherc1[1])
 			return OUT;
 
 		return INTERSECT;
 	}
 
-	IntersectionEnum Intersect(const Aabb<T> & other) const
+	IntersectionEnum Intersect(const Frustum & frustum) const
 	{
-		for (int i = 0; i < 3; i++)
+		float rd;
+		const float bound = radius;
+		//INTERSECTION intersection = IN; // assume we are fully in until we find an intersection
+		for (int i=0; i<6; i++)
 		{
-			auto d = center[i] - other.center[i];
-			auto e = extent[i] + other.extent[i];
-			if (std::abs(d) > e)
+			rd=frustum.frustum[i][0]*center[0]+
+					frustum.frustum[i][1]*center[1]+
+					frustum.frustum[i][2]*center[2]+
+					frustum.frustum[i][3];
+			if (rd < -bound)
+			{
+				// fully out
 				return OUT;
+			}
+
+			/*if (fabs(rd) < bound)
+			{
+				// partially in
+				// we don't return here because we could still be fully out of another frustum plane
+				intersection = INTERSECT;
+			}*/
 		}
+
+		//return intersection;
 		return INTERSECT;
 	}
 
-	template <typename Culler>
-	IntersectionEnum Intersect(const Culler & cull) const
-	{
-		return cull(center, extent, radius) ? OUT : INTERSECT;
-	}
-
-	IntersectionEnum Intersect(IntersectAlways /*always*/) const
+	IntersectionEnum Intersect(IntersectAlways always) const
 	{
 		return IN;
 	}
 
-	template <typename Stream>
-	void DebugPrint(Stream & o) const
-	{
-		auto min = center - extent;
-		auto max = center + extent;
-		o << min[0] << "," << min[1] << "," << min[2] << " to "
-			<< max[0] << "," << max[1] << "," << max[2] << "\n";
-	}
-
-	template <typename Stream>
-	void DebugPrint2(Stream & o) const
-	{
-		o << "center: " << center[0] << "," << center[1] << "," << center[2]
-			<< " extent: " << extent[0] << "," << extent[1] << "," << extent[2] << "\n";
-	}
-
 private:
-	MathVector<T, 3> center; ///< (min + max) / 2
-	MathVector<T, 3> extent; ///< (max - min) / 2
-	T radius; ///< extent.Magnitude()
+	MathVector <T, 3> pos; ///< minimum corner (center-size*0.5)
+	MathVector <T, 3> center; ///< exact center of AABB
+	MathVector <T, 3> size; ///< size of AABB
+	float radius; ///< size.Magnitude()*0.5
 };
 
 #endif

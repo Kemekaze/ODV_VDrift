@@ -22,9 +22,12 @@
 
 #include "mathvector.h"
 
+#include <vector>
 #include <cassert>
 #include <cmath>
-#include <cstring> // memcpy
+#include <iostream>
+#include <cstring>
+#include <sstream>
 
 template <class T>
 class MathPlane
@@ -128,12 +131,12 @@ class MathPlane
 		{
 			T abcsq = v.a*v.a+v.b*v.b+v.c*v.c;
 			assert(abcsq != 0);
-			return (v.a*point[0]+v.b*point[1]+v.c*point[2]+v.d)/std::sqrt(abcsq);
+			return (v.a*point[0]+v.b*point[1]+v.c*point[2]+v.d)/sqrt(abcsq);
 		}
 };
 
-template <typename T, class Stream>
-Stream & operator << (Stream & os, const MathPlane <T> & v)
+template <typename T>
+std::ostream & operator << (std::ostream &os, const MathPlane <T> & v)
 {
 	for (size_t i = 0; i < 3; i++)
 	{

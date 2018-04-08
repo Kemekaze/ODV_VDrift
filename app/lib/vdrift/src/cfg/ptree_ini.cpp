@@ -104,34 +104,34 @@ struct ini
 	}
 };
 
-static void write_ini(const PTree & tree, std::ostream & out, std::string key_name)
+static void write_ini(const PTree & p, std::ostream & out, std::string key_name)
 {
-	for (const auto & node : tree)
+	for (PTree::const_iterator i = p.begin(), e = p.end(); i != e; ++i)
 	{
-		if (node.second.size() == 0)
+		if (i->second.size() == 0)
 		{
-			out << node.first << " = " << node.second.value() << "\n";
+			out << i->first << " = " << i->second.value() << "\n";
 		}
 	}
 	out << "\n";
 
-	for (const auto & node : tree)
+	for (PTree::const_iterator i = p.begin(), e = p.end(); i != e; ++i)
 	{
-		if (node.second.size() > 0)
+		if (i->second.size() > 0)
 		{
-			out << "[" << key_name + node.first << "]\n";
-			write_ini(node.second, out, key_name + node.first + ".");
+			out << "[" << key_name + i->first << "]\n";
+			write_ini(i->second, out, key_name + i->first + ".");
 		}
 	}
 }
 
-void read_ini(std::istream & in, PTree & tree, Include * inc)
+void read_ini(std::istream & in, PTree & p, Include * inc)
 {
-	ini reader(in, tree, inc);
+	ini reader(in, p, inc);
 	reader.read();
 }
 
-void write_ini(const PTree & tree, std::ostream & out)
+void write_ini(const PTree & p, std::ostream & out)
 {
-	write_ini(tree, out, std::string());
+	write_ini(p, out, std::string());
 }

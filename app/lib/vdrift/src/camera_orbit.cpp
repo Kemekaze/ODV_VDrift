@@ -23,7 +23,7 @@
 CameraOrbit::CameraOrbit(const std::string & name) :
 	Camera(name),
 	offset(-Direction::Forward * 3),
-	distance(-1.5f * Direction::Forward.dot(offset)),
+	distance(-1.5 * Direction::Forward.dot(offset)),
 	leftright_rotation(0),
 	updown_rotation(0)
 {
@@ -33,7 +33,7 @@ CameraOrbit::CameraOrbit(const std::string & name) :
 void CameraOrbit::SetOffset(const Vec3 & value)
 {
 	offset = value;
-	if (offset.dot(Direction::Forward) > -1E-3f)
+	if (offset.dot(Direction::Forward) > -0.001)
 	{
 		offset = offset - Direction::Forward;
 	}
@@ -42,7 +42,7 @@ void CameraOrbit::SetOffset(const Vec3 & value)
 void CameraOrbit::Reset(const Vec3 & newfocus, const Quat &)
 {
 	focus = newfocus;
-	distance = -1.5f * Direction::Forward.dot(offset);
+	distance = -1.5 * Direction::Forward.dot(offset);
 	leftright_rotation = 0;
 	updown_rotation = 0;
 	rotation.LoadIdentity();
@@ -56,7 +56,10 @@ void CameraOrbit::Update(const Vec3 & newfocus, const Quat &, float)
 
 void CameraOrbit::Rotate(float up, float left)
 {
-	updown_rotation = Clamp(updown_rotation + up, -1.5f, 1.5f);
+	const float maxupdown = 1.5;
+	updown_rotation += up;
+	if (updown_rotation > maxupdown) updown_rotation = maxupdown;
+	if (updown_rotation <-maxupdown) updown_rotation =-maxupdown;
 
 	leftright_rotation -= left;
 
@@ -71,7 +74,8 @@ void CameraOrbit::Move(float dx, float dy, float dz)
 	distance += Direction::Forward.dot(move);
 	float min_distance = -Direction::Forward.dot(offset);
 	float max_distance = 4 * min_distance;
-	distance = Clamp(distance, min_distance, max_distance);
+	if (distance < min_distance) distance = min_distance;
+	else if (distance > max_distance) distance = max_distance;
 
 	position = -Direction::Forward * distance;
 	rotation.RotateVector(position);

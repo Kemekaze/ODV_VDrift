@@ -30,6 +30,12 @@
 #include "content/contentmanager.h"
 #include "cfg/ptree.h"
 
+template <typename T>
+static inline T clamp(T val, T min, T max)
+{
+	return (val < max) ? (val > min) ? val : min : max;
+}
+
 struct LoadBody
 {
 	SceneNode & topnode;
@@ -76,7 +82,7 @@ static bool LoadWheel(
 
 	std::string meshname;
 	std::vector<std::string> texname;
-	std::shared_ptr<Model> mesh;
+	std::tr1::shared_ptr<Model> mesh;
 	const PTree * cfg_tire;
 	Vec3 size(0);
 	std::string sizestr;
@@ -99,8 +105,8 @@ static bool LoadWheel(
 		meshname = meshname + sizestr;
 		if (!content.get(mesh, path, meshname))
 		{
-			float width = size[0] * 0.001f;
-			float diameter = size[2] * 0.0254f;
+			float width = size[0] * 0.001;
+			float diameter = size[2] * 0.0254;
 
 			VertexArray rimva, diskva;
 			MeshGen::mg_rim(rimva, size[0], size[1], size[2], 10);
@@ -208,7 +214,7 @@ CarGraphics::~CarGraphics()
 bool CarGraphics::Load(
 	const PTree & cfg,
 	const std::string & carpath,
-	const std::string & /*carname*/,
+	const std::string & carname,
 	const std::string & carwheel,
 	const std::string & carpaint,
 	const Vec3 & carcolor,
@@ -223,28 +229,25 @@ bool CarGraphics::Load(
 	LoadDrawable loadDrawable(carpath, anisotropy, content, models, textures, error_output);
 
 	// load body first
-	bodynode = topnode.AddNode();
 	const PTree * cfg_body;
 	std::string meshname;
 	std::vector<std::string> texname;
-	if (cfg.get("body", cfg_body, error_output) &&
-		cfg_body->get("mesh", meshname, error_output))
-	{
-		if (!cfg_body->get("texture", texname, error_output)) return false;
-		if (carpaint != "default") texname[0] = carpaint;
-		if (!loadDrawable(meshname, texname, *cfg_body, topnode, &bodynode)) return false;
-	}
+	if (!cfg.get("body", cfg_body, error_output)) return false;
+	if (!cfg_body->get("mesh", meshname, error_output)) return false;
+	if (!cfg_body->get("texture", texname, error_output)) return false;
+	if (carpaint != "default") texname[0] = carpaint;
+	if (!loadDrawable(meshname, texname, *cfg_body, topnode, &bodynode)) return false;
 
 	// load wheels
 	const PTree * cfg_wheels;
 	if (!cfg.get("wheel", cfg_wheels, error_output)) return false;
 
-	std::shared_ptr<PTree> sel_wheel;
+	std::tr1::shared_ptr<PTree> sel_wheel;
 	if (carwheel != "default" && !content.load(sel_wheel, carpath, carwheel)) return false;
 
-	for (const auto & i : *cfg_wheels)
+	for (PTree::const_iterator i = cfg_wheels->begin(); i != cfg_wheels->end(); ++i)
 	{
-		const PTree * cfg_wheel = &i.second;
+		const PTree * cfg_wheel = &i->second;
 
 		// override default wheel with selected, not very efficient, fixme
 		PTree opt_wheel;
@@ -264,14 +267,14 @@ bool CarGraphics::Load(
 
 	// load drawables
 	LoadBody loadBody(topnode, bodynode, loadDrawable);
-	for (const auto & i : cfg)
+	for (PTree::const_iterator i = cfg.begin(); i != cfg.end(); ++i)
 	{
-		if (i.first != "body" &&
-			i.first != "steering" &&
-			i.first != "light-brake" &&
-			i.first != "light-reverse")
+		if (i->first != "body" &&
+			i->first != "steering" &&
+			i->first != "light-brake" &&
+			i->first != "light-reverse")
 		{
-			loadBody(i.second);
+			loadBody(i->second);
 		}
 	}
 
@@ -286,10 +289,9 @@ bool CarGraphics::Load(
 			return false;
 		}
 		cfg_steer->get("max-angle", steer_angle_max);
-		steer_angle_max = steer_angle_max * float(M_PI / 180);
+		steer_angle_max = steer_angle_max / 180.0 * M_PI;
 		SceneNode & steernoderef = bodynoderef.GetNode(steernode);
 		steer_orientation = steernoderef.GetTransform().GetRotation();
-		steer_rotation = steer_orientation;
 	}
 
 	// load brake/reverse light point light sources (optional)
@@ -369,24 +371,24 @@ void CarGraphics::Update(const std::vector<float> & inputs)
 void CarGraphics::Update(const CarDynamics & dynamics)
 {
 	if (!bodynode.valid()) return;
-	assert(dynamics.GetNumBodies() <= topnode.GetNodeList().size());
+	assert(dynamics.GetNumBodies() == topnode.GetNodeList().size());
 
 	unsigned i = 0;
-	for (auto & node : topnode.GetNodeList())
+	SceneNode::List & childlist = topnode.GetNodeList();
+	for (SceneNode::List::iterator ni = childlist.begin(); ni != childlist.end(); ++ni, ++i)
 	{
 		Vec3 pos = ToMathVector<float>(dynamics.GetPosition(i));
 		Quat rot = ToQuaternion<float>(dynamics.GetOrientation(i));
-		node.GetTransform().SetTranslation(pos);
-		node.GetTransform().SetRotation(rot);
-		i++;
+		ni->GetTransform().SetTranslation(pos);
+		ni->GetTransform().SetRotation(rot);
 	}
 
 	// brake/reverse lights
 	SceneNode & bodynoderef = topnode.GetNode(bodynode);
-	for (auto & light : lights)
+	for (std::list<Light>::iterator i = lights.begin(); i != lights.end(); i++)
 	{
-		SceneNode & node = bodynoderef.GetNode(light.node);
-		Drawable & draw = node.GetDrawList().lights_omni.get(light.draw);
+		SceneNode & node = bodynoderef.GetNode(i->node);
+		Drawable & draw = node.GetDrawList().lights_omni.get(i->draw);
 		draw.SetDrawEnable(applied_brakes > 0);
 	}
 	if (brakelights.valid())
@@ -411,9 +413,10 @@ void CarGraphics::Update(const CarDynamics & dynamics)
 void CarGraphics::SetColor(float r, float g, float b)
 {
 	SceneNode & bodynoderef = topnode.GetNode(bodynode);
-	for (auto & drawable : bodynoderef.GetDrawList().car_noblend)
+	keyed_container<Drawable> & car_noblend = bodynoderef.GetDrawList().car_noblend;
+	for (keyed_container<Drawable>::iterator i = car_noblend.begin(); i != car_noblend.end(); ++i)
 	{
-		drawable.SetColor(r, g, b, 1);
+		i->SetColor(r, g, b, 1);
 	}
 }
 
@@ -424,9 +427,10 @@ void CarGraphics::EnableInteriorView(bool value)
 	// disable glass drawing
 	interior_view = value;
 	SceneNode & bodynoderef = topnode.GetNode(bodynode);
-	for (auto & drawable : bodynoderef.GetDrawList().normal_blend)
+	keyed_container<Drawable> & normal_blend = bodynoderef.GetDrawList().normal_blend;
+	for (keyed_container<Drawable>::iterator i = normal_blend.begin(); i != normal_blend.end(); ++i)
 	{
-		drawable.SetDrawEnable(!interior_view);
+		i->SetDrawEnable(!interior_view);
 	}
 }
 
@@ -461,7 +465,7 @@ bool CarGraphics::LoadLight(
 	SceneNode & node = bodynoderef.GetNode(lights.back().node);
 	node.GetTransform().SetTranslation(Vec3(pos[0], pos[1], pos[2]));
 
-	std::shared_ptr<Model> mesh;
+	std::tr1::shared_ptr<Model> mesh;
 	if (!content.get(mesh, "", "cube" + radiusstr))
 	{
 		VertexArray varray;
@@ -471,7 +475,7 @@ bool CarGraphics::LoadLight(
 	}
 	models.insert(mesh);
 
-	auto & dlist = node.GetDrawList().lights_omni;
+	keyed_container <Drawable> & dlist = node.GetDrawList().lights_omni;
 	lights.back().draw = dlist.insert(Drawable());
 
 	Drawable & draw = dlist.get(lights.back().draw);
@@ -501,9 +505,9 @@ bool CarGraphics::LoadCameras(
 	}
 
 	cameras.reserve(cfg_cams->size());
-	for (const auto & cfg_cam : *cfg_cams)
+	for (PTree::const_iterator i = cfg_cams->begin(); i != cfg_cams->end(); ++i)
 	{
-		Camera * cam = LoadCamera(cfg_cam.second, cambounce, error_output);
+		Camera * cam = LoadCamera(i->second, cambounce, error_output);
 		if (!cam)
 		{
 			ClearCameras();
@@ -517,9 +521,9 @@ bool CarGraphics::LoadCameras(
 
 void CarGraphics::ClearCameras()
 {
-	for (auto & camera : cameras)
+	for (size_t i = 0; i < cameras.size(); ++i)
 	{
-		delete camera;
+		delete cameras[i];
 	}
 	cameras.clear();
 }

@@ -26,7 +26,7 @@ Drawable::Drawable() :
 	vert_array(NULL),
 	model(NULL),
 	center(0),
-	radius(1),
+	radius(0),
 	color(1),
 	draw_order(0),
 	decal(false),
@@ -56,18 +56,18 @@ void Drawable::SetVertArray(const VertexArray * value)
 void Drawable::SetTransform(const Mat4 & value)
 {
 	transform = value;
-	if (model)
-	{
-		center = model->GetAabb().GetCenter();
-		transform.TransformVectorOut(center[0], center[1], center[2]);
-	}
-	else
-	{
-		center.Set(transform[12], transform[13], transform[14]);
-	}
 	uniforms_changed = true;
 }
 
+void Drawable::SetObjectCenter(const Vec3 & value)
+{
+	center = value;
+}
+
+void Drawable::SetRadius(float value)
+{
+	radius = value;
+}
 
 void Drawable::SetColor(float r, float g, float b, float a)
 {
@@ -103,11 +103,18 @@ void Drawable::SetDecal(bool value)
 	uniforms_changed = true;
 }
 
-RenderModelExt & Drawable::GenRenderModelData(const DrawableAttributes & draw_attribs)
+RenderModelExt & Drawable::GenRenderModelData(StringIdMap & string_map)
 {
 	// copy data over to the GL3V render_model object
 	// eventually this should only be done when we update the values, but for now
 	// we call this every time we draw the drawable
+
+	// cache off the stringId values
+	static StringId tex0_id = string_map.addStringId("diffuseTexture");
+	static StringId tex1_id = string_map.addStringId("misc1Texture");
+	static StringId tex2_id = string_map.addStringId("normalMapTexture");
+	static StringId transform_id = string_map.addStringId("modelMatrix");
+	static StringId color_id = string_map.addStringId("colorTint");
 
 	// textures
 	if (textures_changed)
@@ -116,15 +123,15 @@ RenderModelExt & Drawable::GenRenderModelData(const DrawableAttributes & draw_at
 		render_model.textures.clear();
 		if (tex_id[0])
 		{
-			render_model.textures.push_back(RenderTextureEntry(draw_attribs.tex0, tex_id[0], GL_TEXTURE_2D));
+			render_model.textures.push_back(RenderTextureEntry(tex0_id, tex_id[0], GL_TEXTURE_2D));
 		}
 		if (tex_id[1])
 		{
-			render_model.textures.push_back(RenderTextureEntry(draw_attribs.tex1, tex_id[1], GL_TEXTURE_2D));
+			render_model.textures.push_back(RenderTextureEntry(tex1_id, tex_id[1], GL_TEXTURE_2D));
 		}
 		if (tex_id[2])
 		{
-			render_model.textures.push_back(RenderTextureEntry(draw_attribs.tex2, tex_id[2], GL_TEXTURE_2D));
+			render_model.textures.push_back(RenderTextureEntry(tex2_id, tex_id[2], GL_TEXTURE_2D));
 		}
 
 		textures_changed = false;
@@ -138,17 +145,17 @@ RenderModelExt & Drawable::GenRenderModelData(const DrawableAttributes & draw_at
 
 		// only add it if it's not the identity matrix
 		if (transform != Mat4())
-			render_model.uniforms.push_back(RenderUniformEntry(draw_attribs.transform, transform.GetArray(), 16));
+			render_model.uniforms.push_back(RenderUniformEntry(transform_id, transform.GetArray(), 16));
 
 		// only add it if it's not the default
 		if (color != Vec4(1))
 		{
 			float srgba[4];
-			srgba[0] = color[0] < 1 ? std::pow(color[0], 2.2f) : color[0];
-			srgba[1] = color[1] < 1 ? std::pow(color[1], 2.2f) : color[1];
-			srgba[2] = color[2] < 1 ? std::pow(color[2], 2.2f) : color[2];
+			srgba[0] = color[0] < 1 ? pow(color[0], 2.2f) : color[0];
+			srgba[1] = color[1] < 1 ? pow(color[1], 2.2f) : color[1];
+			srgba[2] = color[2] < 1 ? pow(color[2], 2.2f) : color[2];
 			srgba[3] = color[3];
-			render_model.uniforms.push_back(RenderUniformEntry(draw_attribs.color, srgba, 4));
+			render_model.uniforms.push_back(RenderUniformEntry(color_id, srgba, 4));
 		}
 
 		uniforms_changed = false;
@@ -162,7 +169,6 @@ RenderModelExt & Drawable::GenRenderModelData(const DrawableAttributes & draw_at
 void Drawable::SetModel(Model & newmodel)
 {
 	model = &newmodel;
-	radius = newmodel.GetAabb().GetRadius();
-	center = newmodel.GetAabb().GetCenter();
-	transform.TransformVectorOut(center[0], center[1], center[2]);
+	center = newmodel.GetCenter();
+	radius = newmodel.GetRadius();
 }

@@ -25,11 +25,11 @@
 #include "graphics/vertexarray.h"
 #include "mathvector.h"
 #include "roadstrip.h"
+#include "memory.h"
 
-#include <memory>
 #include <iosfwd>
 #include <string>
-#include <vector>
+#include <list>
 
 class ContentManager;
 
@@ -45,7 +45,7 @@ public:
 	bool BuildMap(
 		const int screen_width,
 		const int screen_height,
-		const std::vector <RoadStrip> & roads,
+		const std::list <RoadStrip> & roads,
 		const std::string & trackname,
 		const std::string & texturepath,
 		ContentManager & content,
@@ -54,7 +54,8 @@ public:
 	void Unload();
 
 	/// update the map with provided information for map visibility,
-	void Update(bool visible, unsigned player, const std::vector<Vec3> & carpositions);
+	/// as well as a list of car positions and whether or not they're the player car
+	void Update(bool mapvisible, const std::list <std::pair<Vec3, bool> > & carpositions);
 
 	SceneNode & GetNode() {return mapnode;}
 
@@ -63,8 +64,8 @@ public:
 		const float vx[3],
 		const float vy[3],
 		unsigned color,
-		unsigned color_buffer[],
-		unsigned buffer_width);
+		void * color_buffer,
+		int stride);
 
 private:
 	// map texture size
@@ -92,18 +93,18 @@ private:
 	SceneNode::DrawableHandle mapdraw;
 	VertexArray mapverts;
 
-	std::shared_ptr<Texture> track_map;
-	std::shared_ptr<Texture> cardot0;
-	std::shared_ptr<Texture> cardot1;
-	std::shared_ptr<Texture> cardot0_focused;
-	std::shared_ptr<Texture> cardot1_focused;
+	std::tr1::shared_ptr<Texture> track_map;
+	std::tr1::shared_ptr<Texture> cardot0;
+	std::tr1::shared_ptr<Texture> cardot1;
+	std::tr1::shared_ptr<Texture> cardot0_focused;
+	std::tr1::shared_ptr<Texture> cardot1_focused;
 
 	class CarDot
 	{
 		public:
 			void Init(
 				SceneNode & topnode,
-				std::shared_ptr<Texture> & tex,
+				std::tr1::shared_ptr<Texture> & tex,
 				const Vec2 & corner1,
 				const Vec2 & corner2)
 			{
@@ -116,7 +117,7 @@ private:
 				Retexture(topnode, tex);
 				Reposition(corner1, corner2);
 			}
-			void Retexture(SceneNode & topnode, std::shared_ptr<Texture> & newtex)
+			void Retexture(SceneNode & topnode, std::tr1::shared_ptr<Texture> & newtex)
 			{
 				assert(newtex.get());
 				texture = newtex;
@@ -130,13 +131,10 @@ private:
 			{
 				GetDrawable(topnode).SetDrawEnable(visible);
 			}
-			template <class Stream>
-			void DebugPrint(SceneNode & topnode, Stream & out) const
+			void DebugPrint(SceneNode & topnode, std::ostream & out) const
 			{
 				const Drawable & drawref = GetDrawable(topnode);
-				out << &drawref << ": enable=" << drawref.GetDrawEnable()
-					<< ", tex=" << drawref.GetTexture0()
-					<< ", verts=" << drawref.GetVertArray() << "\n";
+				out << &drawref << ": enable=" << drawref.GetDrawEnable() << ", tex=" << drawref.GetTexture0() << ", verts=" << drawref.GetVertArray() << std::endl;
 			}
 			SceneNode::DrawableHandle & GetDrawableHandle()
 			{
@@ -145,7 +143,7 @@ private:
 
 		private:
 			SceneNode::DrawableHandle dotdraw;
-			std::shared_ptr<Texture> texture;
+			std::tr1::shared_ptr<Texture> texture;
 			VertexArray dotverts;
 
 			Drawable & GetDrawable(SceneNode & topnode)
@@ -159,7 +157,7 @@ private:
 			}
 	};
 
-	std::vector<CarDot> dotlist;
+	std::list <CarDot> dotlist;
 };
 
 #endif

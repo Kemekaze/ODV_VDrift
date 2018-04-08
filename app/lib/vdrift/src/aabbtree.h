@@ -23,15 +23,15 @@
 #include "aabb.h"
 #include "mathvector.h"
 
-#include <vector>
-#include <iostream> // std::cout
+#include <list>
+#include <iostream>
+#include <map>
 
 template <typename DataType, unsigned int ideal_objects_per_node = 1>
 class AabbTreeNode
 {
 public:
-	template <class Stream>
-	void DebugPrint(int level, int & objectcount, bool verbose, Stream & output) const
+	void DebugPrint(int level, int & objectcount, bool verbose, std::ostream & output) const
 	{
 		if (verbose)
 		{
@@ -43,18 +43,18 @@ public:
 
 		objectcount += objects.size();
 
-		for (const auto & child : children)
+		for (typename childrenlist_type::const_iterator i = children.begin(); i != children.end(); ++i)
 		{
-			child.DebugPrint(level+1, objectcount, verbose, output);
+			i->DebugPrint(level+1, objectcount, verbose, output);
 		}
 
 		if (level == 0)
 		{
 			if (verbose)
 			{
-				output << "================\n";
+				output << "================" << std::endl;
 			}
-			output << "TOTAL OBJECTS: " << objectcount << "\n";
+			output << "TOTAL OBJECTS: " << objectcount << std::endl;
 		}
 	}
 
@@ -62,9 +62,9 @@ public:
 	{
 		unsigned int childcount = 0;
 
-		for (const auto & child : children)
+		for (typename childrenlist_type::const_iterator i = children.begin(); i != children.end(); ++i)
 		{
-			childcount += child.size(objectcount);
+			childcount += i->size(objectcount);
 		}
 
 		objectcount += objects.size() + childcount;
@@ -83,7 +83,7 @@ public:
 
 	void Add(DataType & object, const Aabb <float> & newaabb)
 	{
-		objects.push_back(std::make_pair(object, newaabb));
+		objects.push_back(std::pair <DataType, Aabb <float> > (object, newaabb));
 		if (objects.size() == 1) //don't combine if this is the first object, otherwise the AABB would be forced to include (0,0,0)
 			bbox = newaabb;
 		else
@@ -93,48 +93,56 @@ public:
 	///a slow delete that only requires the object
 	void Delete(DataType & object)
 	{
-		//delete using swap and pop
-		auto i = objects.rbegin();
-		while (i != objects.rend())
+		typename std::list <typename objectlist_type::iterator> todel;
+
+		//if we've got objects, test them
+		for (typename objectlist_type::iterator i = objects.begin(); i != objects.end(); ++i)
 		{
-			auto k = i++;
-			if (k->first == object)
+			if (i->first == object)
 			{
-				if (k != objects.rbegin())
-					*k = objects.back();
-				objects.pop_back();
+				todel.push_back(i);
 			}
 		}
 
-		//if we have children, pass it on
-		for (auto & child : children)
+		//do any deletions
+		for (typename std::list <typename objectlist_type::iterator>::iterator i = todel.begin(); i != todel.end(); ++i)
 		{
-			child.Delete(object);
+			objects.erase(*i);
+		}
+
+		//if we have children, pass it on
+		for (typename childrenlist_type::iterator i = children.begin(); i != children.end(); ++i)
+		{
+			i->Delete(object);
 		}
 	}
 
 	///a faster delete that uses the supplied AABB to find the object
 	void Delete(DataType & object, const Aabb <float> & objaabb)
 	{
+		typename std::list <typename objectlist_type::iterator> todel;
+
 		//if we've got objects, test them
-		auto i = objects.rbegin();
-		while (i != objects.rend())
+		for (typename objectlist_type::iterator i = objects.begin(); i != objects.end(); ++i)
 		{
-			auto k = i++;
-			if (k->first == object)
+			if (i->first == object)
 			{
-				if (k != objects.rbegin())
-					*k = objects.back();
-				objects.pop_back();
+				todel.push_back(i);
 			}
 		}
 
-		//if we have children, pass it on
-		for (auto child : children)
+		//do any deletions
+		for (typename std::list <typename objectlist_type::iterator>::iterator i = todel.begin(); i != todel.end(); ++i)
 		{
-			if (child.GetBBOX().Intersect(objaabb))
+			objects.erase(*i);
+		}
+
+		//if we have children, pass it on
+		for (typename childrenlist_type::iterator i = children.begin(); i != children.end(); ++i)
+		{
+			if (i->GetBBOX().Intersect(objaabb))
 			{
-				child.Delete(object, objaabb);
+				i->Delete(object, objaabb);
 			}
 		}
 	}
@@ -146,32 +154,32 @@ public:
 		//if we've got objects, test them
 		if (objects.size() > 1 && testChildren)
 		{
-			for (const auto & object : objects)
+			for (typename objectlist_type::const_iterator i = objects.begin(); i != objects.end(); ++i)
 			{
-				if (object.second.Intersect(shape) != Aabb<float>::OUT)
+				if (i->second.Intersect(shape) != Aabb<float>::OUT)
 				{
-					outputlist.push_back(object.first);
+					outputlist.push_back(i->first);
 				}
 			}
 		}
 		else
 		{
-			for (const auto & object : objects)
+			for (typename objectlist_type::const_iterator i = objects.begin(); i != objects.end(); ++i)
 			{
-				outputlist.push_back(object.first);
+				outputlist.push_back(i->first);
 			}
 		}
 
 		//if we have children, test them
-		for (const auto & child : children)
+		for (typename childrenlist_type::const_iterator i = children.begin(); i != children.end(); ++i)
 		{
-			Aabb<float>::IntersectionEnum intersection = child.GetAabb().Intersect(shape);
+			Aabb<float>::IntersectionEnum intersection = i->GetAabb().Intersect(shape);
 
 			if (intersection != Aabb<float>::OUT)
 			{
 				//our child intersects with the segment, dispatch a query
 				//only bother to test children if we were partially intersecting (if fully in, then we know all children are fully in too)
-				child.Query(shape, outputlist, intersection == Aabb<float>::INTERSECT);
+				i->Query(shape, outputlist, intersection == Aabb<float>::INTERSECT);
 			}
 		}
 	}
@@ -181,19 +189,18 @@ public:
 	void Clear() {objects.clear(); children.clear();}
 
 	///traverse the entire tree putting pointers to all DataType objects into the given outputlist
-	template <class List>
-	void GetContainedObjects(List & outputlist)
+	void GetContainedObjects(std::list <DataType *> & outputlist)
 	{
 		//if we've got objects, add them
-		for (auto & object : objects)
+		for (typename objectlist_type::iterator i = objects.begin(); i != objects.end(); ++i)
 		{
-			outputlist.push_back(&object.first);
+			outputlist.push_back(&i->first);
 		}
 
 		//if we have children, add them
-		for (auto & child : children)
+		for (typename childrenlist_type::iterator i = children.begin(); i != children.end(); ++i)
 		{
-			child.GetContainedObjects(outputlist);
+			i->GetContainedObjects(outputlist);
 		}
 	}
 
@@ -211,16 +218,16 @@ private:
 	{
 		if (this != &collapse_target)
 		{
-			for (auto & object : objects)
+			for (typename objectlist_type::iterator i = objects.begin(); i != objects.end(); ++i)
 			{
-				collapse_target.Add(object.first, object.second);
+				collapse_target.Add(i->first, i->second);
 			}
 			objects.clear();
 		}
 
-		for (auto & child : children)
+		for (typename childrenlist_type::iterator i = children.begin(); i != children.end(); ++i)
 		{
-			child.CollapseTo(collapse_target);
+			i->CollapseTo(collapse_target);
 		}
 		children.clear();
 	}
@@ -241,9 +248,9 @@ private:
 
 		//enforce the rules:  i don't want to start with any children,
 		// so tell all children to send me their objects, then delete them
-		for (auto & child : children)
+		for (typename childrenlist_type::iterator i = children.begin(); i != children.end(); ++i)
 		{
-			child.CollapseTo(*this);
+			i->CollapseTo(*this);
 		}
 		children.clear();
 
@@ -256,23 +263,23 @@ private:
 		Vec3 avgcenter;
 		int numobj = objects.size();
 		float incamount = 1.0 / numobj;
-		for (const auto & object : objects)
+		for (typename objectlist_type::iterator i = objects.begin(); i != objects.end(); ++i)
 		{
-			avgcenter = avgcenter + object.second.GetCenter() * incamount;
+			avgcenter = avgcenter + i->second.GetCenter() * incamount;
 		}
 
 		//find axis of maximum change, so we know where to split
 		Vec3 axismask(1,0,0);
-		Vec3 extent = bbox.GetExtent();
-		if (extent[0] > extent[1] && extent[0] > extent[2])
+		Vec3 bboxsize = bbox.GetSize();
+		if (bboxsize[0] > bboxsize[1] && bboxsize[0] > bboxsize[2])
 		{
 			axismask.Set(1,0,0);
 		}
-		else if (extent[1] > extent[0] && extent[1] > extent[2])
+		else if (bboxsize[1] > bboxsize[0] && bboxsize[1] > bboxsize[2])
 		{
 			axismask.Set(0,1,0);
 		}
-		else if (extent[2] > extent[1] && extent[2] > extent[0])
+		else if (bboxsize[2] > bboxsize[1] && bboxsize[2] > bboxsize[0])
 		{
 			axismask.Set(0,0,1);
 		}
@@ -282,17 +289,17 @@ private:
 		//distribute objects to each child
 		float avgcentercoord = avgcenter.dot(axismask);
 		int distributor(0);
-		for (auto & object : objects)
+		for (typename objectlist_type::iterator i = objects.begin(); i != objects.end(); ++i)
 		{
-			float objcentercoord = object.second.GetCenter().dot(axismask);
+			float objcentercoord = i->second.GetCenter().dot(axismask);
 
 			if (objcentercoord > avgcentercoord)
 			{
-				children.front().Add(object.first, object.second);
+				children.front().Add(i->first, i->second);
 			}
 			else if (objcentercoord < avgcentercoord)
 			{
-				children.back().Add(object.first, object.second);
+				children.back().Add(i->first, i->second);
 			}
 			else
 			{
@@ -300,11 +307,11 @@ private:
 				//distribute children that sit right on our average center in an even way
 				if (distributor % 2 == 0)
 				{
-					children.front().Add(object.first, object.second);
+					children.front().Add(i->first, i->second);
 				}
 				else
 				{
-					children.back().Add(object.first, object.second);
+					children.back().Add(i->first, i->second);
 				}
 				distributor++;
 			}
@@ -322,20 +329,20 @@ private:
 		//if one child doesn't have any objects, then delete both children and take back their objects
 		if (child1obj == 0 || child2obj == 0)
 		{
-			for (auto & child : children)
+			for (typename childrenlist_type::iterator i = children.begin(); i != children.end(); ++i)
 			{
-				for (auto & object : child.objects)
+				for (typename objectlist_type::iterator n = i->objects.begin(); n != i->objects.end(); n++)
 				{
-					Add(object.first, object.second);
+					Add(n->first, n->second);
 				}
 			}
 
 			children.clear();
 		}
 
-		for (auto & child : children)
+		for (typename childrenlist_type::iterator i = children.begin(); i != children.end(); ++i)
 		{
-			child.DistributeObjectsToChildren(level + 1);
+			i->DistributeObjectsToChildren(level + 1);
 		}
 	}
 };

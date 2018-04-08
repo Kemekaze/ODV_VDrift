@@ -23,9 +23,6 @@
 #include "coordinatesystem.h"
 #include "tobullet.h"
 
-#include "BulletCollision/CollisionShapes/btCollisionShape.h"
-#include "BulletCollision/CollisionShapes/btStridingMeshInterface.h"
-
 Track::Track() : racingline_visible(false)
 {
 	// Constructor.
@@ -88,28 +85,27 @@ int Track::ObjectsNumLoaded() const
 
 bool Track::Loaded() const
 {
-	return data.loaded;
+    return data.loaded;
 }
 
 void Track::Clear()
 {
-	for (auto & object : data.objects)
+	for (int i = 0, n = data.objects.size(); i < n; ++i)
 	{
-		data.world->removeCollisionObject(object);
-		delete object;
+		data.world->removeCollisionObject(data.objects[i]);
+		delete data.objects[i];
 	}
 	data.objects.clear();
 
-	for (auto & shape : data.shapes)
+	for (int i = 0, n = data.shapes.size(); i < n; ++i)
 	{
+		btCollisionShape * shape = data.shapes[i];
 		delete shape;
 	}
 	data.shapes.clear();
 
-	for (auto & mesh : data.meshes)
-	{
-		delete mesh;
-	}
+	for (int i = 0, n = data.meshes.size(); i < n; ++i)
+		delete data.meshes[i];
 	data.meshes.clear();
 
 	data.static_node.Clear();
@@ -131,21 +127,21 @@ bool Track::CastRay(
 	const float seglen,
 	int & patch_id,
 	Vec3 & outtri,
-	const RoadPatch * & colpatch,
+	const Bezier * & colpatch,
 	Vec3 & normal) const
 {
 	bool col = false;
-	for (const auto & road : data.roads)
+	for (std::list <RoadStrip>::const_iterator i = data.roads.begin(); i != data.roads.end(); ++i)
 	{
-		Vec3 tri, norm;
-		const RoadPatch * patch = NULL;
-		if (road.Collide(origin, direction, seglen, patch_id, tri, patch, norm))
+		Vec3 coltri, colnorm;
+		const Bezier * colbez = NULL;
+		if (i->Collide(origin, direction, seglen, patch_id, coltri, colbez, colnorm))
 		{
-			if (!col || (tri - origin).MagnitudeSquared() < (outtri - origin).MagnitudeSquared())
+			if (!col || (coltri - origin).MagnitudeSquared() < (outtri - origin).MagnitudeSquared())
 			{
-				outtri = tri;
-				normal = norm;
-				colpatch = patch;
+				outtri = coltri;
+				normal = colnorm;
+				colpatch = colbez;
 			}
 			col = true;
 		}
@@ -157,7 +153,7 @@ void Track::Update()
 {
 	if (!data.loaded) return;
 
-	auto t = data.body_transforms.begin();
+	std::list<MotionState>::const_iterator t = data.body_transforms.begin();
 	for (int i = 0, e = data.body_nodes.size(); i < e; ++i, ++t)
 	{
 		Transform & vt = data.dynamic_node.GetNode(data.body_nodes[i]).GetTransform();

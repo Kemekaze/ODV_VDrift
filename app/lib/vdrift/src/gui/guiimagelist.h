@@ -37,7 +37,6 @@ public:
 		ContentManager & content,
 		const std::string & path,
 		const std::string & ext,
-		const float uv[4],
 		float z);
 
 	/// Special case: list of identical images

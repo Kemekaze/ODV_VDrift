@@ -132,9 +132,9 @@ public:
 		return trackmap;
 	}
 
-	const std::string & GetHUD() const
+	bool GetShowHUD() const
 	{
-		return hud;
+		return show_hud;
 	}
 
 	int GetAnisotropy() const
@@ -144,7 +144,7 @@ public:
 
 	float GetFOV() const
 	{
-		return fov;
+		return FOV;
 	}
 
 	bool GetABS() const
@@ -172,19 +172,14 @@ public:
 		return speed_sensitivity;
 	}
 
+	bool GetJoystickCalibrated() const
+	{
+		return joystick_calibrated;
+	}
+
 	float GetViewDistance() const
 	{
 		return view_distance;
-	}
-
-	bool GetSteeringAssist() const
-	{
-		return steering_assist;
-	}
-
-	bool GetAutoReverse() const
-	{
-		return autoreverse;
 	}
 
 	bool GetAutoClutch() const
@@ -422,16 +417,15 @@ private:
 	int antialiasing; //0 or 1 mean off
 	int anisotropic; //0 or 1 mean off
 	bool trackmap;
-	std::string hud;
-	float fov;
+	bool show_hud;
+	float FOV;
 	bool abs;
 	bool tcs;
 	std::string joytype;
 	bool joy200;
 	float speed_sensitivity;
+	bool joystick_calibrated;
 	float view_distance;
-	bool steering_assist;
-	bool autoreverse;
 	bool autoclutch;
 	bool autoshift;
 	bool racingline;

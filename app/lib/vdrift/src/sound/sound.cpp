@@ -18,19 +18,19 @@
 /************************************************************************/
 
 #include "sound.h"
-#include "minmax.h"
 #include "coordinatesystem.h"
-#include <SDL2/SDL_audio.h>
+#include <SDL2/SDL.h>
 #include <algorithm>
 #include <cassert>
 
 //static std::ofstream logso("logso.txt");
 //static std::ofstream logsa("logsa.txt");
 
-#define FRACTIONBITS (15)
-#define FRACTIONONE  (1<<FRACTIONBITS)
-#define FRACTIONMASK (FRACTIONONE-1)
-#define MAXGAINDELTA (FRACTIONONE * 173 / 44100) // 256 samples from min to max gain
+template <class T>
+static inline T clamp(T val, T min, T max)
+{
+	return val > min ? (val < max ? val : max) : min;
+}
 
 // add item to a compactifying vector
 template <class T>
@@ -136,17 +136,20 @@ bool Sound::SamplersUpdate::empty() const
 }
 
 Sound::Sound() :
+	log_error(0),
 	deviceinfo(0, 0, 0, 0),
 	sound_volume(0),
 	initdone(false),
 	disable(false),
+	set_pause(true),
+	sampler_lock(0),
+	source_lock(0),
 	max_active_sources(64),
 	sources_num(0),
 	update_id(0),
 	sources_pause(true),
 	samplers_num(0),
-	samplers_pause(true),
-	samplers_fade(false)
+	samplers_pause(true)
 {
 	attenuation[0] =  0.9146065;
 	attenuation[1] =  0.2729276;
@@ -161,12 +164,21 @@ Sound::~Sound()
 {
 	if (initdone)
 		SDL_CloseAudio();
+
+	if (sampler_lock)
+		SDL_DestroyMutex(sampler_lock);
+
+	if (source_lock)
+		SDL_DestroyMutex(source_lock);
 }
 
-bool Sound::Init(unsigned short buffersize, std::ostream & info_output, std::ostream & error_output)
+bool Sound::Init(int buffersize, std::ostream & info_output, std::ostream & error_output)
 {
 	if (disable || initdone)
 		return false;
+
+	sampler_lock = SDL_CreateMutex();
+	source_lock = SDL_CreateMutex();
 
 	SDL_AudioSpec desired, obtained;
 
@@ -184,17 +196,20 @@ bool Sound::Init(unsigned short buffersize, std::ostream & info_output, std::ost
 		return false;
 	}
 
-	unsigned frequency = obtained.freq;
-	unsigned channels = obtained.channels;
-	unsigned samples = obtained.samples;
-	unsigned bytespersample = 1;
-	if (obtained.format == AUDIO_S16SYS)
+	int frequency = obtained.freq;
+	int channels = obtained.channels;
+	int samples = obtained.samples;
+	int bytespersample = 2;
+	if (obtained.format == AUDIO_U8 || obtained.format == AUDIO_S8)
 	{
-		bytespersample = 2;
+		bytespersample = 1;
 	}
-	else if (obtained.format == AUDIO_F32SYS)
+
+	if (obtained.format != desired.format)
 	{
-		bytespersample = 4;
+		error_output << "Obtained audio format isn't the same as the desired format, disabling sound." << std::endl;
+		Disable();
+		return false;
 	}
 
 	std::ostringstream dout;
@@ -203,24 +218,21 @@ bool Sound::Init(unsigned short buffersize, std::ostream & info_output, std::ost
 	dout << "Format: " << obtained.format << std::endl;
 	dout << "Bits per sample: " << bytespersample * 8 << std::endl;
 	dout << "Channels: " << channels << std::endl;
-	dout << "Silence: " << (unsigned)obtained.silence << std::endl;
+	dout << "Silence: " << (int) obtained.silence << std::endl;
 	dout << "Samples: " << samples << std::endl;
-	dout << "Size: " << obtained.size;
-	info_output << dout.str() << std::endl;
-
-	if (((obtained.format != AUDIO_S16SYS) && (obtained.format != AUDIO_F32SYS)) ||
-		(obtained.channels != desired.channels))
+	dout << "Size: " << (int) obtained.size << std::endl;
+	info_output << "Sound initialization information:" << std::endl << dout.str();
+	if (bytespersample != 2 || obtained.channels != desired.channels || obtained.freq != desired.freq)
 	{
-		error_output << "Audio device has unsupported format or channel count. Disabling sound." << std::endl;
+		error_output << "Sound interface did not create a 44.1kHz, 16 bit, stereo device as requested.  Disabling sound." << std::endl;
 		Disable();
 		return false;
 	}
 
 	deviceinfo = SoundInfo(samples, frequency, channels, bytespersample);
-	buffer[0].reserve(samples);
-	buffer[1].reserve(samples);
+	log_error = &error_output;
 	initdone = true;
-	SetVolume(1);
+	SetVolume(1.0);
 
 	// enable sound, run callback
 	SDL_PauseAudio(false);
@@ -256,15 +268,15 @@ void Sound::SetAttenuation(const float nattenuation[4])
 	attenuation[3] = nattenuation[3];
 }
 
-size_t Sound::AddSource(std::shared_ptr<SoundBuffer> buffer, float offset, bool is3d, bool loop)
+size_t Sound::AddSource(std::tr1::shared_ptr<SoundBuffer> buffer, float offset, bool is3d, bool loop)
 {
 	Source src;
 	src.buffer = buffer;
 	src.position.Set(0, 0, 0);
 	src.velocity.Set(0, 0, 0);
 	src.offset = offset;
-	src.pitch = 1;
-	src.gain = 0;
+	src.pitch = 1.0;
+	src.gain = 0.0;
 	src.is3d = is3d;
 	src.playing = true;
 	src.loop = loop;
@@ -273,17 +285,18 @@ size_t Sound::AddSource(std::shared_ptr<SoundBuffer> buffer, float offset, bool 
 	// notify sound thread
 	SamplerAdd ns;
 	ns.buffer = buffer.get();
-	ns.offset = offset * FRACTIONONE;
+	ns.offset = offset * Sampler::denom;
 	ns.loop = loop;
 	ns.id = -1;
-	samplers_update.back().sadd.push_back(ns);
+	samplers_update.getFirst().sadd.push_back(ns);
 
+	//*log_error << "Add sound source: " << id << " " << buffer->GetName() << std::endl;
 	return id;
 }
 
 void Sound::RemoveSource(size_t id)
 {
-	samplers_update.back().sremove.push_back(id);
+	samplers_update.getFirst().sremove.push_back(id);
 	sources_remove.push_back(id);
 }
 
@@ -296,10 +309,10 @@ void Sound::ResetSource(size_t id)
 	// notify sound thread
 	SamplerAdd ns;
 	ns.buffer = src.buffer.get();
-	ns.offset = src.offset * FRACTIONONE;
+	ns.offset = src.offset * Sampler::denom;
 	ns.loop = src.loop;
 	ns.id = idn;
-	samplers_update.back().sadd.push_back(ns);
+	samplers_update.getFirst().sadd.push_back(ns);
 }
 
 bool Sound::GetSourcePlaying(size_t id) const
@@ -351,7 +364,10 @@ void Sound::Update(bool pause)
 {
 	if (disable) return;
 
-	sources_pause = pause;
+	set_pause = pause;
+
+	// get source stop messages from sound thread
+	GetSourceChanges();
 
 	// process source stop messages
 	ProcessSourceStop();
@@ -360,20 +376,43 @@ void Sound::Update(bool pause)
 
 	// calculate sampler changes from sources
 	ProcessSources();
+/*
+	logso << "id: " <<samplers_update.getFirst().id;
+	logso << " add: " << samplers_update.getFirst().sadd.size();
+	logso << " del: " << samplers_update.getFirst().sremove.size();
+	logso << " set: " << samplers_update.getFirst().sset.size();
+	logso << " sources: " << sources_num;
+	logso << std::endl;
+*/
+	size_t old_update_id = update_id;
 
 	// commit sampler changes to sound thread
 	SetSamplerChanges();
+
+	// use update id to determine whether sampler updates have been comitted
+	if (old_update_id != update_id)
+	{
+		ProcessSourceRemove();
+	}
+}
+
+void Sound::GetSourceChanges()
+{
+	SDL_LockMutex(source_lock);
+	if (!sources_stop.getSecond().empty())
+	{
+		sources_stop.swapFirst();
+	}
+	SDL_UnlockMutex(source_lock);
 }
 
 void Sound::ProcessSourceStop()
 {
-	if (!sources_stop.swap_front())
-		return;
-
-	auto & sstop = sources_stop.front();
-	for (auto id : sstop)
+	std::vector<size_t> & sstop = sources_stop.getFirst();
+	for (size_t i = 0; i < sstop.size(); ++i)
 	{
-		auto idn = sources[id].id;
+		size_t id = sstop[i];
+		size_t idn = sources[id].id;
 		if (idn < sources_num)
 		{
 			// if source is still there, stop playing
@@ -387,8 +426,9 @@ void Sound::ProcessSourceStop()
 
 void Sound::ProcessSourceRemove()
 {
-	for (auto id : sources_remove)
+	for (size_t i = 0; i < sources_remove.size(); ++i)
 	{
+		size_t id = sources_remove[i];
 		RemoveItem(id, sources, sources_num);
 	}
 	sources_remove.clear();
@@ -396,8 +436,8 @@ void Sound::ProcessSourceRemove()
 
 void Sound::ProcessSources()
 {
-	auto & sset = samplers_update.back().sset;
-	sset.resize(sources_num);
+	std::vector<SamplerSet> & supdate = samplers_update.getFirst().sset;
+	supdate.resize(sources_num);
 
 	sources_active.clear();
 	for (size_t i = 0; i < sources_num; ++i)
@@ -417,15 +457,17 @@ void Sound::ProcessSources()
 				// distance attenuation
 				// y = a * (x - b)^c + d
 				float cgain = attenuation[0] * powf(len - attenuation[1], attenuation[2]) + attenuation[3];
-				cgain = Clamp(cgain, 0.0f, 1.0f);
+				cgain = clamp(cgain, 0.0f, 1.0f);
 
 				// directional attenuation
 				// maximum at 0.75 (source on opposite side)
 				relvec = relvec * (1.0f / len);
 				(-listener_rot).RotateVector(relvec);
 				float xcoord = relvec.dot(Direction::Right) * 0.75f;
-				float pgain1 = Max(xcoord, 0.0f);  // left attenuation
-				float pgain2 = Max(-xcoord, 0.0f); // right attenuation
+				float pgain1 = xcoord;			// left attenuation
+				float pgain2 = -xcoord;			// right attenuation
+				if (pgain1 < 0) pgain1 = 0;
+				if (pgain2 < 0) pgain2 = 0;
 
 				gain1 = cgain * src.gain * (1 - pgain1);
 				gain2 = cgain * src.gain * (1 - pgain2);
@@ -435,7 +477,7 @@ void Sound::ProcessSources()
 				gain1 = gain2 = src.gain;
 			}
 
-			unsigned maxgain = Max(gain1, gain2) * FRACTIONONE;
+			int maxgain = std::max(gain1, gain2) * Sampler::denom;
 			if (maxgain > 0)
 			{
 				SourceActive sa;
@@ -446,14 +488,11 @@ void Sound::ProcessSources()
 		}
 
 		// fade sound volume
-		float volume = sources_pause ? 0 : sound_volume;
+		float volume = set_pause ? 0 : sound_volume;
 
-		sset[i].gain1 = volume * gain1 * FRACTIONONE;
-		sset[i].gain2 = volume * gain2 * FRACTIONONE;
-
-		auto info = src.buffer->GetInfo();
-		auto base_pitch = FRACTIONONE * info.frequency / deviceinfo.frequency;
-		sset[i].pitch = src.pitch * base_pitch;
+		supdate[i].gain1 = volume * gain1 * Sampler::denom;
+		supdate[i].gain2 = volume * gain2 * Sampler::denom;
+		supdate[i].pitch = src.pitch * Sampler::denom;
 	}
 
 	LimitActiveSources();
@@ -472,58 +511,58 @@ void Sound::LimitActiveSources()
 		sources_active.end());
 
 	// mute remaining sources
-	auto & sset = samplers_update.back().sset;
+	std::vector<SamplerSet> & supdate = samplers_update.getFirst().sset;
 	for (size_t i = max_active_sources; i < sources_active.size(); ++i)
 	{
-		sset[sources_active[i].id].gain1 = 0;
-		sset[sources_active[i].id].gain2 = 0;
+		supdate[sources_active[i].id].gain1 = 0;
+		supdate[sources_active[i].id].gain2 = 0;
 	}
 }
 
 void Sound::SetSamplerChanges()
 {
-	auto & su = samplers_update.back();
-	if (su.empty())
+	if (samplers_update.getFirst().empty())
 		return;
 
-	su.pause = sources_pause;
-	su.id = update_id;
-
-	if (samplers_update.swap_back())
+	SDL_LockMutex(sampler_lock);
+	if (samplers_update.getSecond().empty())
 	{
-		ProcessSourceRemove();
-		update_id++;
+		samplers_update.getFirst().id = update_id++;
+		samplers_update.swapFirst();
 	}
+	sources_pause = set_pause;
+	SDL_UnlockMutex(sampler_lock);
 }
 
 void Sound::GetSamplerChanges()
 {
-	if (samplers_update.swap_front())
+	SDL_LockMutex(sampler_lock);
+	if (!samplers_update.getSecond().empty())
 	{
-		auto & su = samplers_update.front();
-		samplers_fade = (samplers_pause != su.pause);
-		samplers_pause = su.pause;
+		samplers_update.swapLast();
 	}
+	samplers_fade = (samplers_pause != sources_pause);
+	samplers_pause = sources_pause;
+	SDL_UnlockMutex(sampler_lock);
 }
 
 void Sound::ProcessSamplerUpdate()
 {
-	auto & sset = samplers_update.front().sset;
-	if (sset.empty())
+	std::vector<SamplerSet> & supdate = samplers_update.getLast().sset;
+	if (supdate.empty())
 		return;
 
-	assert(samplers_num == sset.size());
+	assert(samplers_num == supdate.size());
 	for (size_t i = 0; i < samplers_num; ++i)
 	{
-		samplers[i].gain1 = sset[i].gain1;
-		samplers[i].gain2 = sset[i].gain2;
-		samplers[i].pitch = sset[i].pitch;
+		samplers[i].gain1 = supdate[i].gain1;
+		samplers[i].gain2 = supdate[i].gain2;
+		samplers[i].pitch = supdate[i].pitch;
 	}
-	sset.clear();
+	supdate.clear();
 }
 
-template <typename stream_type, typename buffer_type, int vmin, int vmax>
-void Sound::ProcessSamplers(unsigned char stream[], unsigned len)
+void Sound::ProcessSamplers(unsigned char *stream, int len)
 {
 	// clear stream
 	memset(stream, 0, len);
@@ -532,35 +571,32 @@ void Sound::ProcessSamplers(unsigned char stream[], unsigned len)
 	if (samplers_pause && !samplers_fade)
 		return;
 
-	auto & sstop = sources_stop.back();
-
 	// init sampling buffers
-	auto samples = len / (2 * sizeof(stream_type));
-	buffer[0].resize(samples);
-	buffer[1].resize(samples);
+	int len4 = len / 4;
+	buffer1.resize(len4);
+	buffer2.resize(len4);
 
 	// run samplers
-	auto sstream = (stream_type*)stream;
-	auto buffer0 = (buffer_type*)&buffer[0][0];
-	auto buffer1 = (buffer_type*)&buffer[1][0];
+	short * sstream = (short*)stream;
 	for (size_t i = 0; i < samplers_num; ++i)
 	{
 		Sampler & smp = samplers[i];
+
 		if (!smp.playing)
 			continue;
 
 		if (smp.gain1 | smp.gain2 | smp.last_gain1 | smp.last_gain2)
 		{
-			SampleAndAdvanceWithPitch<stream_type>(smp, buffer0, buffer1, samples);
+			SampleAndAdvanceWithPitch16bit(smp, &buffer1[0], &buffer2[0], len4);
 
-			for (unsigned n = 0; n < samples; ++n)
+			for (int n = 0; n < len4; ++n)
 			{
-				unsigned pos = n * 2;
-				buffer_type val1 = sstream[pos] + buffer0[n];
-				buffer_type val2 = sstream[pos + 1] + buffer1[n];
+				int pos = n * 2;
+				int val1 = sstream[pos] + buffer1[n];
+				int val2 = sstream[pos + 1] + buffer2[n];
 
-				val1 = Clamp<buffer_type>(val1, vmin, vmax);
-				val2 = Clamp<buffer_type>(val2, vmin, vmax);
+				val1 = clamp(val1, -32768, 32767);
+				val2 = clamp(val2, -32768, 32767);
 
 				sstream[pos] = val1;
 				sstream[pos + 1] = val2;
@@ -568,19 +604,20 @@ void Sound::ProcessSamplers(unsigned char stream[], unsigned len)
 		}
 		else
 		{
-			AdvanceWithPitch(smp, samples);
+			AdvanceWithPitch(smp, len);
 		}
 
 		if (!smp.playing)
-			sstop.push_back(smp.id);
+			sources_stop.getLast().push_back(smp.id);
 	}
 }
 
 void Sound::ProcessSamplerRemove()
 {
-	auto & sremove = samplers_update.front().sremove;
-	for (auto id : sremove)
+	std::vector<size_t> & sremove = samplers_update.getLast().sremove;
+	for (size_t i = 0; i < sremove.size(); ++i)
 	{
+		size_t id = sremove[i];
 		assert(id < samplers.size());
 		RemoveItem(id, samplers, samplers_num);
 	}
@@ -589,34 +626,30 @@ void Sound::ProcessSamplerRemove()
 
 void Sound::ProcessSamplerAdd()
 {
-	auto & sadd = samplers_update.front().sadd;
-	for (const auto & sa : sadd)
+	std::vector<SamplerAdd> & sadd = samplers_update.getLast().sadd;
+	for (size_t i = 0; i < sadd.size(); ++i)
 	{
-		auto info = sa.buffer->GetInfo();
-		auto base_pitch = FRACTIONONE * info.frequency / deviceinfo.frequency;
-		auto samples_per_channel = info.samples / info.channels;
-
 		Sampler smp;
-		smp.buffer = sa.buffer;
-		smp.samples_per_channel = samples_per_channel;
-		smp.sample_pos = sa.offset;
+		smp.buffer = sadd[i].buffer;
+		smp.samples_per_channel = smp.buffer->GetInfo().samples / smp.buffer->GetInfo().channels;
+		smp.sample_pos = sadd[i].offset;
 		smp.sample_pos_remainder = 0;
-		smp.pitch = base_pitch;
+		smp.pitch = smp.denom;
 		smp.gain1 = 0;
 		smp.gain2 = 0;
 		smp.last_gain1 = 0;
 		smp.last_gain2 = 0;
 		smp.playing = true;
-		smp.loop = sa.loop;
+		smp.loop = sadd[i].loop;
 
-		if (sa.id == -1)
+		if (sadd[i].id == -1)
 		{
 			AddItem(smp, samplers, samplers_num);
 		}
 		else
 		{
-			smp.id = samplers[sa.id].id;
-			samplers[sa.id] = smp;
+			smp.id = samplers[sadd[i].id].id;
+			samplers[sadd[i].id] = smp;
 		}
 	}
 	sadd.clear();
@@ -624,87 +657,79 @@ void Sound::ProcessSamplerAdd()
 
 void Sound::SetSourceChanges()
 {
-	if (sources_stop.back().empty())
+	if (sources_stop.getLast().empty())
 		return;
 
-	sources_stop.swap_back();
+	SDL_LockMutex(source_lock);
+	sources_stop.swapLast();
+	SDL_UnlockMutex(source_lock);
 }
 
-template <typename stream_type, typename buffer_type, int vmin, int vmax>
-void Sound::CallbackStereo(void * myself, unsigned char stream[], int len)
+void Sound::Callback16bitStereo(void *myself, Uint8 *stream, int len)
 {
 	assert(this == myself);
 	assert(initdone);
-	assert(len > 0);
 
 	GetSamplerChanges();
-
+/*
+	logsa << "id: " << samplers_update.getLast().id;
+	logsa << " add: " << samplers_update.getLast().sadd.size();
+	logsa << " del: " << samplers_update.getLast().sremove.size();
+	logsa << " set: " << samplers_update.getLast().sset.size();
+	logsa << " samplers: " << samplers_num;
+	logsa << std::endl;
+*/
 	ProcessSamplerAdd();
 
 	ProcessSamplerUpdate();
 
-	ProcessSamplers<stream_type, buffer_type, vmin, vmax>(stream, len);
+	ProcessSamplers(stream, len);
 
 	ProcessSamplerRemove();
 
 	SetSourceChanges();
 }
 
-void Sound::CallbackWrapper(void * sound, unsigned char stream[], int len)
+void Sound::CallbackWrapper(void *sound, unsigned char *stream, int len)
 {
-	auto bytespersample = static_cast<Sound*>(sound)->deviceinfo.bytespersample;
-	if (bytespersample == 2)
-	{
-		static_cast<Sound*>(sound)->CallbackStereo<short, int, -32768, 32767>(sound, stream, len);
-	}
-	else if (bytespersample == 4)
-	{
-		static_cast<Sound*>(sound)->CallbackStereo<float, float, -1, 1>(sound, stream, len);
-	}
+	static_cast<Sound*>(sound)->Callback16bitStereo(sound, stream, len);
 }
 
-template <typename T0, typename T1> T0 Cast(T1 v);
-template <> inline float Cast<float, unsigned>(unsigned v) { return v * (1.0f / FRACTIONONE); }
-template <> inline float Cast<float, int>(int v) { return v * (1.0f / FRACTIONONE); }
-template <> inline unsigned Cast<unsigned, float>(float v) { return v * FRACTIONONE; }
-template <> inline int Cast<int, float>(float v) { return v * FRACTIONONE; }
-template <> inline unsigned Cast<unsigned, int>(int v) { return v; }
-template <> inline int Cast<int, unsigned>(unsigned v) { return v; }
-template <> inline int Cast<int, int>(int v) { return v; }
-
-template <typename T> T Scale(T v, T s);
-template <> inline int Scale<int>(int v, int s) { return v * s / FRACTIONONE; }
-template <> inline float Scale<float>(float v, float s) { return v * s; }
-
-template <typename sample_type, typename buffer_type>
-void Sound::SampleAndAdvanceWithPitch(Sampler & sampler, buffer_type chan1[], buffer_type chan2[], unsigned len)
+void Sound::SampleAndAdvanceWithPitch16bit(
+	Sampler & sampler, int * chan1, int * chan2, int len)
 {
+	assert(len > 0);
 	assert(sampler.buffer);
-	assert(sampler.playing);
+
+	// if not playing, fill output buffers with silence
+	if (!sampler.playing)
+	{
+		// should be dealt with before getting here
+		assert(0);
+		for (int i = 0; i < len; ++i)
+		{
+			chan1[i] = chan2[i] = 0;
+		}
+		return;
+	}
 
 	// start samlping
-	auto channels = sampler.buffer->GetInfo().channels;
-	auto chaninc = channels - 1;
-	auto samples = sampler.samples_per_channel * channels;
-	auto nr = sampler.sample_pos_remainder;
-	auto ni = sampler.sample_pos;
+	int chan = sampler.buffer->GetInfo().channels;
+	int samples = sampler.samples_per_channel * chan;
+	int chaninc = chan - 1;
+	int nr = sampler.sample_pos_remainder;
+	int ni = sampler.sample_pos;
+	const int16_t * buf = (const int16_t *)sampler.buffer->GetRawBuffer();
 
-	auto buf = (const sample_type *)sampler.buffer->GetRawBuffer();
-	auto gain1 = Cast<buffer_type>(sampler.gain1);
-	auto gain2 = Cast<buffer_type>(sampler.gain2);
-	auto last_gain1 = Cast<buffer_type>(sampler.last_gain1);
-	auto last_gain2 = Cast<buffer_type>(sampler.last_gain2);
-	auto max_gain_delta = Cast<buffer_type>(MAXGAINDELTA);
-
-	for (unsigned i = 0; i < len; ++i)
+	for (int i = 0; i < len; ++i)
 	{
 		// limit gain change rate
-		auto gain_delta1 = gain1 - last_gain1;
-		auto gain_delta2 = gain2 - last_gain2;
-		gain_delta1 = Clamp(gain_delta1, -max_gain_delta, max_gain_delta);
-		gain_delta2 = Clamp(gain_delta2, -max_gain_delta, max_gain_delta);
-		last_gain1 += gain_delta1;
-		last_gain2 += gain_delta2;
+		int gain_delta1 = sampler.gain1 - sampler.last_gain1;
+		int gain_delta2 = sampler.gain2 - sampler.last_gain2;
+		gain_delta1 = clamp(gain_delta1, -sampler.max_gain_delta, sampler.max_gain_delta);
+		gain_delta2 = clamp(gain_delta2, -sampler.max_gain_delta, sampler.max_gain_delta);
+		sampler.last_gain1 += gain_delta1;
+		sampler.last_gain2 += gain_delta2;
 
 		if (ni >= sampler.samples_per_channel && !sampler.loop)
 		{
@@ -715,37 +740,35 @@ void Sound::SampleAndAdvanceWithPitch(Sampler & sampler, buffer_type chan1[], bu
 		else
 		{
 			// the sample to the left of the playback position, channel 0 and 1
-			auto id1 = (ni * channels) % samples;
-			buffer_type samp10 = buf[id1];
-			buffer_type samp11 = buf[id1 + chaninc];
+			int id1 = (ni * chan) % samples;
+			int samp10 = buf[id1];
+			int samp11 = buf[id1 + chaninc];
 
 			// the sample to the right of the playback position, channel 0 and 1
-			auto id2 = (id1 + channels) % samples;
-			buffer_type samp20 = buf[id2];
-			buffer_type samp21 = buf[id2 + chaninc];
+			int id2 = (id1 + chan) % samples;
+			int samp20 = buf[id2];
+			int samp21 = buf[id2 + chaninc];
 
 			// interpolated sample at playback position
-			auto f = Cast<buffer_type>(nr);
-			auto val1 = samp10 + Scale(samp20 - samp10, f);
-			auto val2 = samp11 + Scale(samp21 - samp11, f);
+			int val1 = (nr * samp20 + (sampler.denom - nr) * samp10) / sampler.denom;
+			int val2 = (nr * samp21 + (sampler.denom - nr) * samp11) / sampler.denom;
+			val1 = (val1 * sampler.last_gain1) / sampler.denom;
+			val2 = (val2 * sampler.last_gain2) / sampler.denom;
 
 			// fill output buffers
-			chan1[i] = Scale(val1, last_gain1);
-			chan2[i] = Scale(val2, last_gain2);
+			chan1[i] = val1;
+			chan2[i] = val2;
 
 			// advance playback position
 			nr += sampler.pitch;
-			ni += nr >> FRACTIONBITS;
-			nr &= FRACTIONMASK;
+			int ninc = nr / sampler.denom;
+			nr -= ninc * sampler.denom;
+			ni += ninc;
 		}
 	}
 
-	sampler.last_gain1 = Cast<unsigned>(last_gain1);
-	sampler.last_gain2 = Cast<unsigned>(last_gain2);
 	sampler.sample_pos = ni;
 	sampler.sample_pos_remainder = nr;
-
-	// loop buffer
 	if (!sampler.loop)
 	{
 		sampler.playing = (sampler.sample_pos < sampler.samples_per_channel);
@@ -756,16 +779,13 @@ void Sound::SampleAndAdvanceWithPitch(Sampler & sampler, buffer_type chan1[], bu
 	}
 }
 
-void Sound::AdvanceWithPitch(Sampler & sampler, unsigned len)
+void Sound::AdvanceWithPitch(Sampler & sampler, int len)
 {
 	// advance playback position
-	auto nr = sampler.sample_pos_remainder;
-	auto ni = sampler.sample_pos;
-	nr += sampler.pitch * len;
-	ni += nr >> FRACTIONBITS;
-	nr &= FRACTIONMASK;
-	sampler.sample_pos = ni;
-	sampler.sample_pos_remainder = nr;
+	sampler.sample_pos_remainder += len * sampler.pitch;
+	int delta = sampler.sample_pos_remainder / sampler.denom;
+	sampler.sample_pos_remainder -= delta * sampler.denom;
+	sampler.sample_pos += delta;
 
 	// loop buffer
 	if (!sampler.loop)

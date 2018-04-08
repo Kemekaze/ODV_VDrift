@@ -47,9 +47,13 @@ public:
 	const Mat4 & GetTransform() const;
 	void SetTransform(const Mat4 & value);
 
-	/// bounding sphere center and radius
-	const Vec3 & GetCenter() const;
+	/// bounding sphere center in local space
+	const Vec3 & GetObjectCenter() const;
+	void SetObjectCenter(const Vec3 & value);
+
+	/// bounding sphere radius
 	float GetRadius() const;
+	void SetRadius(float value);
 
 	const Vec4 & GetColor() const;
 	void SetColor(float nr, float ng, float nb, float na);
@@ -70,7 +74,7 @@ public:
 
 	/// this gets called if we are using the GL3 renderer
 	/// returns a reference to the RenderModelExternal structure
-	RenderModelExt & GenRenderModelData(const DrawableAttributes & draw_attribs);
+	RenderModelExt & GenRenderModelData(StringIdMap & string_map);
 
 	/// setting model will also set bounding sphere center and radius
 	Model * GetModel() const;
@@ -130,7 +134,7 @@ inline const Mat4 & Drawable::GetTransform() const
 	return transform;
 }
 
-inline const Vec3 & Drawable::GetCenter() const
+inline const Vec3 & Drawable::GetObjectCenter() const
 {
 	return center;
 }

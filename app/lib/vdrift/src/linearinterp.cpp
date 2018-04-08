@@ -20,6 +20,11 @@
 #include "linearinterp.h"
 #include "unittest.h"
 
+#include <cmath>
+
+#include <iostream>
+using std::ostream;
+
 QT_TEST(linearinterp_test)
 {
 	{

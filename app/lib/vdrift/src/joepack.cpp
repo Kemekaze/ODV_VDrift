@@ -21,11 +21,12 @@
 #include "endian_utility.h"
 #include "unittest.h"
 
-#include <unordered_map>
+#include <map>
 #include <fstream>
 #include <cassert>
 
 using std::string;
+using std::map;
 using std::ios_base;
 
 struct JoePack::Impl
@@ -37,8 +38,8 @@ struct JoePack::Impl
 		unsigned length;
 	};
 	const std::string versionstr;
-	std::unordered_map<std::string, FatEntry> fat;
-	std::unordered_map<std::string, FatEntry>::iterator curfa;
+	std::map <std::string, FatEntry> fat;
+	std::map <std::string, FatEntry>::iterator curfa;
 	std::ifstream f;
 
 	Impl();
@@ -89,7 +90,6 @@ bool JoePack::Impl::Load(const string & fn)
 		char * fnch = new char[maxstrlen+1];
 
 		//load FAT
-		fat.reserve(numobjs);
 		for (unsigned int i = 0; i < numobjs; i++)
 		{
 			FatEntry fa;

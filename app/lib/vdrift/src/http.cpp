@@ -75,13 +75,6 @@ std::string HttpInfo::FormatSpeed(double bytes)
 	return s.str();
 }
 
-std::string HttpInfo::FormatInt(int value)
-{
-	std::ostringstream s;
-	s << value;
-	return s.str();
-}
-
 bool HttpInfo::operator != (const HttpInfo & other) const
 {
 	return !(*this == other);
@@ -129,11 +122,11 @@ Http::Http(const std::string & temporary_folder) : folder(temporary_folder), dow
 
 Http::~Http()
 {
-	for (const auto & hs : easyhandles)
+	for (std::map <CURL*, RequestState>::iterator i = easyhandles.begin(); i != easyhandles.end(); i++)
 	{
-		FILE * file = hs.second.file;
+		FILE * file = i->second.file;
 		fclose(file);
-		curl_easy_cleanup(hs.first);
+		curl_easy_cleanup(i->first);
 	}
 	easyhandles.clear();
 	requests.clear();
@@ -148,7 +141,7 @@ void Http::SetTemporaryFolder(const std::string & temporary_folder)
     folder = temporary_folder;
 }
 
-int ProgressCallback(void * ptr, double TotalToDownload, double NowDownloaded, double /*TotalToUpload*/, double /*NowUploaded*/)
+int ProgressCallback(void * ptr, double TotalToDownload, double NowDownloaded, double TotalToUpload, double NowUploaded)
 {
 	ProgressInfo * info = static_cast<ProgressInfo*>(ptr);
 	assert(info->http && info->easyhandle);
@@ -176,7 +169,6 @@ bool Http::Request(const std::string & url, std::ostream & error_output)
 	{
 		// Setup the appropriate options for the easy handle.
 		curl_easy_setopt(easyhandle, CURLOPT_URL, url.c_str());
-		curl_easy_setopt(easyhandle, CURLOPT_SSL_VERIFYPEER, 0);
 
 		// This function call will make this multi_handle control the specified easy_handle.
 		// Furthermore, libcurl now initiates the connection associated with the specified easy_handle.
@@ -261,7 +253,7 @@ bool Http::Tick()
 			CURL * easyhandle = msg->easy_handle;
 
 			// Get the url.
-			auto u = easyhandles.find(easyhandle);
+			std::map <CURL*, RequestState>::iterator u = easyhandles.find(easyhandle);
 			assert(u != easyhandles.end() && "corruption in easyhandles map");
 			std::string url = u->second.url;
 
@@ -275,10 +267,7 @@ bool Http::Tick()
 			{
 				// Failure.
 				requests[url].state = HttpInfo::FAILED;
-				requests[url].error = curl_easy_strerror(msg->data.result);
-				requests[url].error.append(" (");
-				requests[url].error.append(HttpInfo::FormatInt(msg->data.result));
-				requests[url].error.append(")");
+				requests[url].error = "unknown";
 			}
 
 			// Cleanup.
@@ -288,10 +277,10 @@ bool Http::Tick()
 		}
 
 		// Update status.
-		for (const auto & hs : easyhandles)
+		for (std::map <CURL*, RequestState>::iterator i = easyhandles.begin(); i != easyhandles.end(); i++)
 		{
-			CURL * easyhandle = hs.first;
-			auto u = easyhandles.find(easyhandle);
+			CURL * easyhandle = i->first;
+			std::map <CURL*, RequestState>::iterator u = easyhandles.find(easyhandle);
 			assert(u != easyhandles.end() && "corruption in requestUrls map");
 			std::string url = u->second.url;
 
@@ -313,7 +302,7 @@ bool Http::Downloading() const
 
 bool Http::GetRequestInfo(const std::string & url, HttpInfo & out)
 {
-	auto i = requests.find(url);
+	std::map <std::string, HttpInfo>::iterator i = requests.find(url);
 	if (i == requests.end())
 		return false;
 
@@ -327,11 +316,11 @@ bool Http::GetRequestInfo(const std::string & url, HttpInfo & out)
 
 void Http::CancelAllRequests()
 {
-	for (const auto & hs : easyhandles)
+	for (std::map <CURL*, RequestState>::iterator i = easyhandles.begin(); i != easyhandles.end(); i++)
 	{
-		FILE * file = hs.second.file;
+		FILE * file = i->second.file;
 		fclose(file);
-		curl_easy_cleanup(hs.first);
+		curl_easy_cleanup(i->first);
 	}
 	easyhandles.clear();
 	requests.clear();
@@ -369,7 +358,7 @@ std::string Http::GetDownloadPath(const std::string & url) const
 
 void Http::UpdateProgress(CURL * handle, float total, float current)
 {
-	auto i = easyhandles.find(handle);
+	std::map <CURL*, RequestState>::iterator i = easyhandles.find(handle);
 	if (i == easyhandles.end())
 		return;
 

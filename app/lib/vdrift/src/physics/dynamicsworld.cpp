@@ -23,8 +23,6 @@
 #include "tobullet.h"
 #include "track.h"
 
-#include "BulletCollision/CollisionShapes/btCollisionShape.h"
-
 #define EXTBULLET
 
 struct MyRayResultCallback : public btCollisionWorld::RayResultCallback
@@ -108,8 +106,7 @@ DynamicsWorld::~DynamicsWorld()
 	reset();
 }
 
-const RoadPatch * DynamicsWorld::GetSectorPatch(int i)
-{
+const Bezier* DynamicsWorld::GetSectorPatch(int i){
 	return track->GetSectorPatch(i);
 }
 
@@ -124,7 +121,7 @@ bool DynamicsWorld::castRay(
 	btVector3 n = -direction;
 	btScalar d = length;
 	int patch_id = -1;
-	const RoadPatch * patch = 0;
+	const Bezier * b = 0;
 	const TrackSurface * s = TrackSurface::None();
 	const btCollisionObject * c = 0;
 
@@ -132,7 +129,8 @@ bool DynamicsWorld::castRay(
 	rayTest(origin, p, ray);
 
 	// track geometry collision
-	if (ray.hasHit())
+	bool geometryHit = ray.hasHit();
+	if (geometryHit)
 	{
 		p = ray.m_hitPointWorld;
 		n = ray.m_hitNormalWorld;
@@ -140,21 +138,23 @@ bool DynamicsWorld::castRay(
 		c = ray.m_collisionObject;
 		if (c->isStaticObject())
 		{
-			TrackSurface * ts = static_cast<TrackSurface*>(c->getUserPointer());
-			if (c->getCollisionShape()->isCompound())
-				ts = static_cast<TrackSurface*>(ray.m_shape->getUserPointer());
-
-			// verify surface pointer
-			if (track)
+			TrackSurface* tsc = static_cast<TrackSurface*>(c->getUserPointer());
+			const std::vector<TrackSurface> & surfaces = track->GetSurfaces();
+			if (tsc >= &surfaces[0] && tsc <= &surfaces[surfaces.size()-1])
 			{
-				const std::vector<TrackSurface> & surfaces = track->GetSurfaces();
-				if (ts < &surfaces[0] || ts > &surfaces[surfaces.size() - 1])
-					ts = NULL;
-				assert(ts);
+				s = tsc;
 			}
-
-			if (ts)
-				s = ts;
+#ifndef EXTBULLET
+			else if (c->getCollisionShape()->isCompound())
+			{
+				TRACKSURFACE* tss = static_cast<TRACKSURFACE*>(ray.m_shape->getUserPointer());
+				if (tss >= &surfaces[0] && tss <= &surfaces[surfaces.size()-1])
+				{
+					s = tss;
+				}
+			}
+#endif
+			//std::cerr << "static object without surface" << std::endl;
 		}
 
 		// track bezierpatch collision
@@ -165,7 +165,7 @@ bool DynamicsWorld::castRay(
 			Vec3 colpoint;
 			Vec3 colnormal;
 			patch_id = contact.GetPatchId();
-			if (track->CastRay(org, dir, length, patch_id, colpoint, patch, colnormal))
+			if (track->CastRay(org, dir, length, patch_id, colpoint, b, colnormal))
 			{
 				p = ToBulletVector(colpoint);
 				n = ToBulletVector(colnormal);
@@ -173,12 +173,12 @@ bool DynamicsWorld::castRay(
 			}
 		}
 
-		contact = CollisionContact(p, n, d, patch_id, patch, s, c);
+		contact = CollisionContact(p, n, d, patch_id, b, s, c);
 		return true;
 	}
 
 	// should only happen on vehicle rollover
-	contact = CollisionContact(p, n, d, patch_id, patch, s, c);
+	contact = CollisionContact(p, n, d, patch_id, b, s, c);
 	return false;
 }
 
@@ -186,6 +186,11 @@ void DynamicsWorld::update(btScalar dt)
 {
 	stepSimulation(dt, maxSubSteps, timeStep);
 	//CProfileManager::dumpAll();
+}
+
+void DynamicsWorld::debugPrint(std::ostream & out) const
+{
+	out << "Collision objects: " << getNumCollisionObjects() << std::endl;
 }
 
 void DynamicsWorld::solveConstraints(btContactSolverInfo& solverInfo)

@@ -18,8 +18,6 @@
 /************************************************************************/
 
 #include "model.h"
-#include "joeserialize.h"
-
 #include <fstream>
 #include <string>
 #include <limits>
@@ -27,12 +25,14 @@
 static const std::string file_magic = "OGLVARRAYV01";
 
 Model::Model() :
+	radius(0),
 	generatedmetrics(false)
 {
 	// Constructor.
 }
 
 Model::Model(const std::string & filepath, std::ostream & error_output) :
+	radius(0),
 	generatedmetrics(false)
 {
 	if (filepath.size() > 4 && filepath.substr(filepath.size()-4) == ".ova")
@@ -51,17 +51,17 @@ bool Model::CanSave() const
 	return false;
 }
 
-bool Model::Save(const std::string & /*strFileName*/, std::ostream & /*error_output*/) const
+bool Model::Save(const std::string & strFileName, std::ostream & error_output) const
 {
 	return false;
 }
 
-bool Model::Load(const std::string & /*strFileName*/, std::ostream & /*error_output*/)
+bool Model::Load(const std::string & strFileName, std::ostream & error_output)
 {
 	return false;
 }
 
-bool Model::Load(const VertexArray & nvarray, std::ostream & /*error_output*/)
+bool Model::Load(const VertexArray & nvarray, std::ostream & error_output)
 {
 	Clear();
 
@@ -69,6 +69,12 @@ bool Model::Load(const VertexArray & nvarray, std::ostream & /*error_output*/)
 
 	GenMeshMetrics();
 
+	return true;
+}
+
+bool Model::Serialize(joeserialize::Serializer & s)
+{
+	_SERIALIZE_(s, varray);
 	return true;
 }
 
@@ -126,11 +132,11 @@ void Model::GenMeshMetrics()
 	float minv[3] = {+fmax, +fmax, +fmax};
 
 	const float * verts;
-	unsigned int vnum3;
+	int vnum3;
 	varray.GetVertices(verts, vnum3);
 	assert(vnum3);
 
-	for (unsigned int n = 0; n < vnum3; n += 3)
+	for (int n = 0; n < vnum3; n += 3)
 	{
 		const float * v = verts + n;
 		if (v[0] > maxv[0]) maxv[0] = v[0];
@@ -141,22 +147,54 @@ void Model::GenMeshMetrics()
 		if (v[2] < minv[2]) minv[2] = v[2];
 	}
 
-	Vec3 min(minv[0], minv[1], minv[2]);
-	Vec3 max(maxv[0], maxv[1], maxv[2]);
+	min.Set(minv[0], minv[1], minv[2]);
+	max.Set(maxv[0], maxv[1], maxv[2]);
+	radius = GetSize().Magnitude() * 0.5f + 0.001f;	// 0.001 margin
 
-	aabb = Aabb<float>(min, max);
 	generatedmetrics = true;
+}
+
+Vec3 Model::GetSize() const
+{
+	return max - min;
+}
+
+Vec3 Model::GetCenter() const
+{
+	return (max + min) * 0.5f;
+}
+
+float Model::GetRadius() const
+{
+	RequireMetrics();
+	return radius;
 }
 
 void Model::Clear()
 {
 	ClearMeshData();
-	generatedmetrics = false;
+	ClearMetrics();
+}
+
+const VertexArray & Model::GetVertexArray() const
+{
+	return varray;
 }
 
 bool Model::Loaded() const
 {
 	return (varray.GetNumIndices() > 0);
+}
+
+void Model::RequireMetrics() const
+{
+	// Mesh metrics need to be generated before they can be queried.
+	assert(generatedmetrics);
+}
+
+void Model::ClearMetrics()
+{
+	generatedmetrics = false;
 }
 
 void Model::ClearMeshData()

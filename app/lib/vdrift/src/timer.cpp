@@ -20,7 +20,6 @@
 #include "timer.h"
 #include "unittest.h"
 
-#include <list>
 #include <string>
 #include <sstream>
 
@@ -48,9 +47,7 @@ bool Timer::Load(const std::string & trackrecordspath, float stagingtime)
 
 int Timer::AddCar(const std::string & cartype)
 {
-	float bestlap = 0;
-	trackrecords.get(cartype, "sector 0", bestlap);
-	car.push_back(LapInfo(cartype, bestlap));
+	car.push_back(LapInfo(cartype));
 	return car.size()-1;
 }
 
@@ -82,8 +79,8 @@ void Timer::Tick(float dt)
 
 	assert(elapsed_time >= 0);
 
-	for (auto & lap : car)
-		lap.Tick(elapsed_time);
+	for (vector <LapInfo>::iterator i = car.begin(); i != car.end(); ++i)
+		i->Tick(elapsed_time);
 }
 
 void Timer::Lap(const unsigned int carid, const int nextsector)
@@ -119,6 +116,15 @@ void Timer::UpdateDistance(const unsigned int carid, const double newdistance)
 {
 	assert(carid < car.size());
 	car[carid].UpdateLapDistance(newdistance);
+}
+
+void Timer::DebugPrint(std::ostream & out) const
+{
+	for (unsigned int i = 0; i < car.size(); ++i)
+	{
+		out << i << ". ";
+		car[i].DebugPrint(out);
+	}
 }
 
 class Place
@@ -160,9 +166,9 @@ std::pair <int, int> Timer::GetCarPlace(int index)
     distances.sort();
 
     int curplace = 1;
-	for (auto & distance : distances)
+	for (std::list <Place>::iterator i = distances.begin(); i != distances.end(); ++i)
     {
-        if (distance.GetIndex() == index)
+        if (i->GetIndex() == index)
             place = curplace;
 
         curplace++;

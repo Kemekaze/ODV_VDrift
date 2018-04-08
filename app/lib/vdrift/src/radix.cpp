@@ -41,7 +41,7 @@ static inline bool ComputeCounters(
 	if (!ranks_valid)
 	{
 		// Check whether input is alredy sorted while accum the counters.
-		auto it = input.begin();
+		typename std::vector<T>::const_iterator it = input.begin();
 		T vprev = *it;
 		while (bytes != bytes_end)
 		{
@@ -336,9 +336,9 @@ QT_TEST(radix_test)
 
 	// test signed valiues
 	std::vector<float> input(20, 0.0);
-	for (float & f : input)
+	for (unsigned i = 0; i < input.size(); ++i)
 	{
-		f = float(rand() - 16384);
+		input[i] = float(rand() - 16384);
 	}
 
 	rsort.sort(input);
@@ -357,9 +357,9 @@ QT_TEST(radix_test)
 	QT_CHECK(!resort);
 
 	// test positive values only
-	for (float & f : input)
+	for (unsigned i = 0; i < input.size(); ++i)
 	{
-		f = float(rand());
+		input[i] = float(rand());
 	}
 
 	resort = rsort.sort(input, true);

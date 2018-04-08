@@ -20,16 +20,15 @@
 #ifndef _CARCONTROLMAP_H
 #define _CARCONTROLMAP_H
 
+#include "eventsystem.h"
 #include "gameinput.h"
 
-#include <cassert>
 #include <iosfwd>
 #include <string>
 #include <vector>
 #include <map>
 
 class Config;
-class EventSystem;
 
 class CarControlMap
 {
@@ -43,10 +42,7 @@ public:
 	void Save(Config & controlfile);
 
 	/// query the eventsystem for info, then return the resulting input array
-	const std::vector <float> & ProcessInput(
-		const std::string & joytype, const EventSystem & eventsystem,
-		float dt, bool joy_200, float carms, float speedsens,
-		int screenw, int screenh, float button_ramp, bool hgateshifter);
+	const std::vector <float> & ProcessInput(const std::string & joytype, EventSystem & eventsystem, float dt, bool joy_200, float carms, float speedsens, int screenw, int screenh, float button_ramp, bool hgateshifter);
 
 	const std::vector< float > & GetInputs() const {return inputs;}
 
@@ -56,32 +52,44 @@ public:
 
 	struct Control
 	{
-		enum MouseAxisEnum
-		{
-			MOUSEY = 0,
-			MOUSEX = 1
-		};
-		int id;		// key, button, axis id
-
 		enum TypeEnum
 		{
-			AXIS,
-			BUTTON,
-			HAT
+			KEY,
+			JOY,
+			MOUSE,
+			UNKNOWN
 		} type;
-
-		enum DeviceEnum
-		{
-			JOYSTICKS = 128,
-			MOUSE = 253,
-			KEYBOARD = 254,
-			UNKNOWN = 255
-		};
-		unsigned char device;	// joysticks, keyboard, mouse
-
-		bool negative;
 		bool onetime;
 		bool pushdown;
+		int keycode;
+
+		int joynum;
+		int joyaxis;
+		enum JoyAxisEnum
+		{
+			POSITIVE,
+			NEGATIVE
+		} joyaxistype;
+		enum JoyTypeEnum
+		{
+			JOYAXIS,
+			JOYBUTTON,
+			JOYHAT
+		} joytype;
+
+		enum MouseTypeEnum
+		{
+			MOUSEBUTTON,
+			MOUSEMOTION
+		} mousetype;
+		enum MouseDirectionEnum
+		{
+			UP,
+			DOWN,
+			LEFT,
+			RIGHT
+		} mdir;
+		bool last_mouse_state;
 
 		float deadzone;
 		float exponent;
@@ -121,13 +129,20 @@ private:
 	/// max number of controls per input
 	static const size_t max_controls = 3;
 
+	/// used to stringify/destringify the CARINPUT enum
+	static const std::map <std::string, unsigned> carinput_stringmap;
+	static const std::vector<std::string> carinput_strings;
+
+	/// used to turn legacy key names from older vdrift releases into keycodes
+	static const std::map <std::string, int> keycode_stringmap;
+
+	static std::map <std::string, unsigned> InitCarInputStringMap();
+	static std::vector<std::string> InitCarInputStrings();
+	static std::map <std::string, int> InitKeycodeStringMap();
 
 	static const std::string & GetStringFromInput(const unsigned input);
-
 	static unsigned GetInputFromString(const std::string & str);
-
 	static const std::string & GetStringFromKeycode(const int code);
-
 	static int GetKeycodeFromString(const std::string & str);
 
 	void AddControl(Control newctrl, const std::string & inputname, std::ostream & error_output);

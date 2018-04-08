@@ -26,8 +26,8 @@
 #include "graphics/scenenode.h"
 #include "physics/motionstate.h"
 #include "physics/tracksurface.h"
+#include "memory.h"
 
-#include <memory>
 #include <iosfwd>
 #include <string>
 #include <list>
@@ -89,7 +89,7 @@ public:
 		const float seglen,
 		int & patch_id,
 		Vec3 & outtri,
-		const RoadPatch * & colpatch,
+		const Bezier * & colpatch,
 		Vec3 & normal) const;
 
 	/// Synchronize graphics and physics.
@@ -102,7 +102,7 @@ public:
 		return data.start_positions.size();
 	}
 
-	const std::vector <RoadStrip> & GetRoadList() const
+	const std::list <RoadStrip> & GetRoadList() const
 	{
 		return data.roads;
 	}
@@ -112,7 +112,7 @@ public:
 		return data.lap.size();
 	}
 
-	const RoadPatch * GetSectorPatch(unsigned int sector) const
+	const Bezier * GetSectorPatch(unsigned int sector) const
 	{
 		assert (sector < data.lap.size());
 		return data.lap[sector];
@@ -126,11 +126,6 @@ public:
 	bool IsReversed() const
 	{
 		return data.reverse;
-	}
-
-	bool IsFixedSkybox() const
-	{
-		return !data.vertical_tracking_skyboxes;
 	}
 
 	const std::vector<TrackSurface> & GetSurfaces() const
@@ -162,8 +157,8 @@ private:
 		DynamicsWorld* world;
 
 		// content used by track
-		std::set<std::shared_ptr<Model> > models;
-		std::set<std::shared_ptr<Texture> > textures;
+		std::set<std::tr1::shared_ptr<Model> > models;
+		std::set<std::tr1::shared_ptr<Texture> > textures;
 
 		// static track objects
 		SceneNode static_node;
@@ -178,8 +173,8 @@ private:
 		std::list<MotionState> body_transforms;
 
 		// road information
-		std::vector<const RoadPatch*> lap;
-		std::vector<RoadStrip> roads;
+		std::vector<const Bezier*> lap;
+		std::list<RoadStrip> roads;
 		std::vector<std::pair<Vec3, Quat > > start_positions;
 
 		SceneNode racingline_node;
@@ -199,7 +194,7 @@ private:
 
 	// temporary loading data
 	class Loader;
-	std::unique_ptr<Loader> loader;
+	std::auto_ptr<Loader> loader;
 };
 
 #endif

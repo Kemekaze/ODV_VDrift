@@ -23,8 +23,7 @@
 #include "guiwidget.h"
 #include "graphics/scenenode.h"
 #include "graphics/vertexarray.h"
-
-#include <memory>
+#include "memory.h"
 
 class ContentManager;
 class Texture;
@@ -43,11 +42,7 @@ public:
 		ContentManager & content,
 		const std::string & path,
 		const std::string & ext,
-		const float xywh[4],
-		const float uv[4],
-		const float z);
-
-	bool GetProperty(const std::string & name, Slot1<const std::string &> *& slot);
+		float x, float y, float w, float h, float z);
 
 	void SetImage(const std::string & value);
 
@@ -57,7 +52,7 @@ private:
 	ContentManager * m_content;
 	std::string m_path, m_name, m_ext;
 	SceneNode::DrawableHandle m_draw;
-	std::shared_ptr<Texture> m_texture;
+	std::tr1::shared_ptr<Texture> m_texture;
 	VertexArray m_varray;
 	bool m_load;
 

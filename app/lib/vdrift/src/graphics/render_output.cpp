@@ -46,6 +46,11 @@ void RenderOutput::RenderToFramebuffer(int width, int height)
 	fb_height = height;
 }
 
+bool RenderOutput::IsFBO() const
+{
+	return !use_framebuffer;
+}
+
 void RenderOutput::Begin(GraphicsState & glstate, std::ostream & error_output)
 {
 	if (!use_framebuffer)

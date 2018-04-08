@@ -8,7 +8,7 @@ WORKDIR /app
 
 ENV HOME /app
 #ENV USR vDODV
-
+ENV USRHOME = /root
 ADD ./app /app
 
 #RUN useradd --home-dir $HOME $USR \
@@ -17,10 +17,10 @@ ADD ./app /app
 #USER $USR
 
 #Compile VDrift
-RUN cd /app/vdrift && scons prefix=/app/vdrift datadir=data && cd /app
+#RUN cd /app/lib/vdrift && scons prefix=/app/lib/vdrift datadir=data && cd /app
 
-RUN mkdir $HOME/.vdrift/ \
- && mv $HOME/VDrift.config $HOME/.vdrift/.
+RUN mkdir $USRHOME/.vdrift/ \
+ && mv $HOME/VDrift.config $USRHOME/.vdrift/.
 
 #RUN mkdir -p /opt/od \
 # && chown $USER:$USER /opt/od \
@@ -36,4 +36,4 @@ RUN mkdir build \
 
 
 
-CMD ["bash","./main.sh"]
+CMD ["./lib/vdrift/build/vdrift"]

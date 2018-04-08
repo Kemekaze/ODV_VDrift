@@ -40,10 +40,13 @@
 #include "cargraphics.h"
 #include "carsound.h"
 #include "carinfo.h"
+#include "hud.h"
+#include "inputgraph.h"
 #include "sound/sound.h"
 #include "camera.h"
 #include "camera_free.h"
 #include "trackmap.h"
+#include "loadingscreen.h"
 #include "timer.h"
 #include "replay.h"
 #include "forcefeedback.h"
@@ -52,10 +55,6 @@
 #include "content/contentmanager.h"
 #include "updatemanager.h"
 #include "game_downloader.h"
-
-#include "BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h"
-#include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
-#include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 
 #include <iosfwd>
 #include <string>
@@ -77,11 +76,7 @@ public:
 private:
 	void End();
 
-	/// Main game loop
-	void Run();
-
-	/// Main loop body
-	void Advance();
+	void MainLoop();
 
 	bool ParseArguments(std::list <std::string> & args);
 
@@ -93,7 +88,7 @@ private:
 
 	bool InitSound();
 
-	bool InitGUI();
+	bool InitGUI(const std::string & pagename);
 
 	void Test();
 
@@ -105,12 +100,7 @@ private:
 
 	void UpdateCars(float dt);
 
-	void ProcessCarInputs();
-
-	/// Updates camera, call after physics update
-	void ProcessCameraInputs();
-
-	void UpdateHUD(const size_t carid, const std::vector<float> & carinputs);
+	void UpdateCarInputs(int carid);
 
 	void UpdateTimer();
 
@@ -124,10 +114,6 @@ private:
 	void UpdateCarPosList();
 
 	void UpdateCarInfo();
-
-	void UpdateCarSpecs();
-
-	void UpdateCarSpecList(GuiOption::List & speclist);
 
 	bool NewGame(bool playreplay=false, bool opponents=false, int num_laps=0);
 
@@ -161,8 +147,6 @@ private:
 
 	void PopulateCarWheelList(const std::string & carname, GuiOption::List & wheellist);
 
-	void PopulateCarSpecList(GuiOption::List & speclist);
-
 	void PopulateDriverList(GuiOption::List & driverlist);
 
 	void PopulateStartList(GuiOption::List & startlist);
@@ -179,7 +163,9 @@ private:
 
 	void UpdateTrackMap();
 
-	void ShowLoadingScreen(float progress, float progress_max, const std::string & optional_text);
+	void ShowHUD(bool value);
+
+	void ShowLoadingScreen(float progress, float max, bool drawGui, const std::string & optionalText, float x, float y);
 
 	void ProcessNewSettings();
 
@@ -198,7 +184,7 @@ private:
 
 	void UpdateParticleGraphics();
 
-	void UpdateDriftScore(const int carid, const float dt);
+	void UpdateDriftScore(const CarDynamics & car, float dt);
 
 	std::string GetReplayRecordingFilename();
 
@@ -217,11 +203,12 @@ private:
 	// game actions
 	void QuitGame();
 	void LeaveGame();
+	void StartPractice();
 	void StartRace();
-	void PauseGame();
-	void ContinueGame();
+	void ReturnToGame();
 	void RestartGame();
 	void StartReplay();
+	void HandleOnlineClicked();
 	void StartCheckForUpdates();
 	void StartCarManager();
 	void CarManagerNext();
@@ -260,7 +247,6 @@ private:
 	void BindActionsToGUI();
 	void RegisterActions();
 	void InitActionMap(std::map<std::string, Slot0*> & actionmap);
-	void InitSignalMap(std::map<std::string, Signal1<const std::string &>*> & signalmap);
 
 	Slot1<const std::string &> set_car_toedit;
 	Slot1<const std::string &> set_car_startpos;
@@ -276,34 +262,6 @@ private:
 	Slot1<const std::string &> set_cars_num;
 	Slot1<const std::string &> set_control;
 	std::vector<Slot0> actions;
-
-	// game info signals
-	Signal1<const std::string &> signal_loading;
-	Signal1<const std::string &> signal_fps;
-
-	// hud info signals
-	Signal1<const std::string &> signal_debug_info[4];
-	Signal1<const std::string &> signal_message;
-	Signal1<const std::string &> signal_lap_time[3];
-	Signal1<const std::string &> signal_lap;
-	Signal1<const std::string &> signal_pos;
-	Signal1<const std::string &> signal_score;
-	Signal1<const std::string &> signal_steering;
-	Signal1<const std::string &> signal_throttle;
-	Signal1<const std::string &> signal_brake;
-	Signal1<const std::string &> signal_gear;
-	Signal1<const std::string &> signal_shift;
-	Signal1<const std::string &> signal_speedometer;
-	Signal1<const std::string &> signal_speed_norm;
-	Signal1<const std::string &> signal_speed;
-	Signal1<const std::string &> signal_tachometer;
-	Signal1<const std::string &> signal_rpm_norm;
-	Signal1<const std::string &> signal_rpm_red;
-	Signal1<const std::string &> signal_rpm;
-	Signal1<const std::string &> signal_abs;
-	Signal1<const std::string &> signal_tcs;
-	Signal1<const std::string &> signal_gas;
-	Signal1<const std::string &> signal_nos;
 
 	std::ostream & info_output;
 	std::ostream & error_output;
@@ -328,6 +286,10 @@ private:
 	std::map <std::string, Font> fonts;
 	std::string renderconfigfile;
 
+	SceneNode debugnode;
+	TextDrawable fps_draw;
+	TextDrawable profiling_text;
+
 	std::vector <float> fps_track;
 	int fps_position;
 	float fps_min;
@@ -350,13 +312,13 @@ private:
 	CameraFree garage_camera;
 	Camera * active_camera;
 
-	CarControlMap car_controls_local;
+	std::pair <CarDynamics *, CarControlMap> carcontrols_local;
+	std::map <const CarDynamics *, int> cartimerids;
 	btAlignedObjectArray <CarDynamics> car_dynamics;
 	std::vector <CarGraphics> car_graphics;
 	std::vector <CarSound> car_sounds;
 	std::vector <CarInfo> car_info;
 	size_t player_car_id;
-	size_t camera_car_id;
 	size_t car_edit_id;
 	int race_laps;
 	bool practice;
@@ -375,13 +337,16 @@ private:
 	TrackMap trackmap;
 	Track track;
 	Gui gui;
+	Hud hud;
+	InputGraph inputgraph;
+	LoadingScreen loadingscreen;
 	Timer timer;
 	Replay replay;
 	Ai ai;
 	Http http;
 
-	std::unique_ptr <ForceFeedback> forcefeedback;
-	float ff_update_time;
+	std::auto_ptr <ForceFeedback> forcefeedback;
+	double ff_update_time;
 };
 
 #endif

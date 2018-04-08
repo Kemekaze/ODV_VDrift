@@ -25,6 +25,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 class PTree;
 
@@ -211,9 +212,9 @@ template <class T>
 inline void PTree::forEachRecursive(T & functor) const
 {
 	functor(*this);
-	for (const auto & child : *this)
+	for (const_iterator i = begin(); i != end(); ++i)
 	{
-		child.second.forEachRecursive(functor);
+		i->second.forEachRecursive(functor);
 	}
 }
 
@@ -344,19 +345,19 @@ inline void PTree::_get<const PTree *>(const PTree & p, const PTree * & value) c
 template <>
 inline PTree & PTree::set(const std::string & key, const PTree & value)
 {
-	std::string::size_type n = key.find('.');
-	auto pi = _children.insert(std::make_pair(key.substr(0, n), value));
+	std::string::const_iterator next = std::find(key.begin(), key.end(), '.');
+	std::pair<iterator, bool> pi = _children.insert(std::make_pair(std::string(key.begin(), next), value));
 	PTree & p = pi.first->second;
 	if (pi.second && p._value.empty())
 	{
 		p._value = pi.first->first;
 		p._parent = this;
 	}
-	if (n == std::string::npos)
+	if (next == key.end())
 	{
 		return p;
 	}
-	return p.set(key.substr(n + 1), PTree());
+	return p.set(std::string(next+1, key.end()), PTree());
 }
 
 #endif //_PTREE_H

@@ -24,7 +24,7 @@
 #include "LinearMath/btVector3.h"
 #include <cassert>
 
-class RoadPatch;
+class Bezier;
 class btCollisionObject;
 
 class CollisionContact
@@ -45,14 +45,14 @@ public:
 		const btVector3 & n,
 		const btScalar d,
 		const int i,
-		const RoadPatch * r,
+		const Bezier * b,
 		const TrackSurface * s,
 		const btCollisionObject * c) :
 		position(p),
 		normal(n),
 		depth(d),
 		patchid(i),
-		patch(r),
+		patch(b),
 		surface(s),
 		col(c)
 	{
@@ -84,7 +84,7 @@ public:
 		return patchid;
 	}
 
-	const RoadPatch * GetPatch() const
+	const Bezier * GetPatch() const
 	{
 		return patch;
 	}
@@ -118,7 +118,7 @@ private:
 	btVector3 normal;
 	btScalar depth;
 	int patchid;
-	const RoadPatch * patch;
+	const Bezier * patch;
 	const TrackSurface * surface;
 	const btCollisionObject * col;
 };

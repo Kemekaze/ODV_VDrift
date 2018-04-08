@@ -20,15 +20,22 @@
 #ifndef _MATHVECTOR_H
 #define _MATHVECTOR_H
 
+#include "joeserialize.h"
+
+#include <vector>
 #include <iostream>
 #include <sstream>
 #include <cstring> // memcpy
 #include <cassert>
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
 #include <cmath>
 
 template <typename T, unsigned int dimension>
 class MathVector
 {
+friend class joeserialize::Serializer;
 private:
 	T v[dimension];
 
@@ -59,7 +66,7 @@ public:
 
 	const T Magnitude() const
 	{
-		return std::sqrt(MagnitudeSquared());
+		return sqrt(MagnitudeSquared());
 	}
 	const T MagnitudeSquared() const
 	{
@@ -102,13 +109,13 @@ public:
 	{
 		MathVector <T, dimension> output;
 
-		const T mag = Magnitude();
+		const T mag = (Magnitude());
+
 		assert(mag != 0);
-		const T n = 1 / mag;
 
 		for (size_type i = 0; i < dimension; i++)
 		{
-			output[i] = v[i] * n;
+			output[i] = v[i]/mag;
 		}
 
 		return output;
@@ -142,7 +149,7 @@ public:
 	{
 		MathVector <T, dimension> output;
 
-		output = (*this)-other*2*other.dot(*this);
+		output = (*this)-other*T(2.0)*other.dot(*this);
 
 		return output;
 	}
@@ -176,7 +183,15 @@ public:
 	MathVector <T, dimension> operator / (const T & scalar) const
 	{
 		assert(scalar != 0);
-		return (*this) * (1 / scalar);
+
+		MathVector <T, dimension> output;
+
+		for (size_type i = 0; i < dimension; i++)
+		{
+			output[i] = v[i]/scalar;
+		}
+
+		return output;
 	}
 
 	MathVector <T, dimension> operator + (const MathVector <T, dimension> & other) const
@@ -242,8 +257,7 @@ public:
 		return output;
 	}
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
 		for (unsigned int i = 0; i < dimension; i++)
 		{
@@ -259,6 +273,7 @@ public:
 template <class T>
 class MathVector <T, 3>
 {
+friend class joeserialize::Serializer;
 private:
 	struct Vector3
 	{
@@ -292,7 +307,7 @@ public:
 
 	inline const T Magnitude() const
 	{
-		return std::sqrt(MagnitudeSquared());
+		return sqrt(MagnitudeSquared());
 	}
 	inline const T MagnitudeSquared() const
 	{
@@ -326,7 +341,7 @@ public:
 	{
 		const T mag = Magnitude();
 		assert(mag != 0);
-		const T maginv = 1 / mag;
+		const T maginv = (1.0/mag);
 
 		return MathVector <T, 3> (v.x*maginv, v.y*maginv, v.z*maginv);
 	}
@@ -373,7 +388,7 @@ public:
 	MathVector <T, 3> operator / (const T & scalar) const
 	{
 		assert(scalar != 0);
-		T invscalar = 1/scalar;
+		T invscalar = 1.0/scalar;
 		return (*this)*invscalar;
 	}
 
@@ -419,21 +434,19 @@ public:
 	///set all vector components to be positive
 	inline void absify()
 	{
-		v.x = std::abs(v.x);
-		v.y = std::abs(v.y);
-		v.z = std::abs(v.z);
+		v.x = fabs(v.x);
+		v.y = fabs(v.y);
+		v.z = fabs(v.z);
 	}
 
 	///project this vector onto the vector 'vec'.  neither needs to be a unit vector
 	MathVector <T, 3> project(const MathVector <T, 3> & vec) const
 	{
-		const MathVector <T, 3> n = vec.Normalize();
-		const T projection = dot(n);
-		return n * projection;
+		T scalar_projection = dot(vec.Normalize());
+		return vec.Normalize() * scalar_projection;
 	}
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
 		if (!s.Serialize("x",v.x)) return false;
 		if (!s.Serialize("y",v.y)) return false;
@@ -442,8 +455,8 @@ public:
 	}
 };
 
-template <typename T, unsigned int dimension, class Stream>
-Stream & operator << (Stream & os, const MathVector <T, dimension> & v)
+template <typename T, unsigned int dimension>
+std::ostream & operator << (std::ostream &os, const MathVector <T, dimension> & v)
 {
 	for (size_t i = 0; i < dimension-1; i++)
 	{
@@ -453,8 +466,8 @@ Stream & operator << (Stream & os, const MathVector <T, dimension> & v)
 	return os;
 }
 
-template <typename T, unsigned int dimension, class Stream>
-Stream & operator >> (Stream & is, MathVector <T, dimension> & v)
+template <typename T, unsigned int dimension>
+std::istream & operator >> (std::istream &is, MathVector <T, dimension> & v)
 {
 	std::string value;
 	for (size_t i = 0; i < dimension && std::getline(is, value, ','); ++i)

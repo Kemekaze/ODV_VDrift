@@ -30,8 +30,11 @@
 #include <vector>
 #include <iomanip>
 #include <fstream>
-#include <unordered_map>
-#include <unordered_set>
+
+#ifdef USE_TR1
+#include <tr1/unordered_map>
+#include <tr1/unordered_set>
+#endif
 
 namespace joeserialize
 {
@@ -105,19 +108,18 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto & i : t)
+				for (typename std::list <T>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << count;
-					if (!this->Serialize(itemname.str(), i)) return false;
-					count++;
+					if (!this->Serialize(itemname.str(), *i)) return false;
 				}
 			}
 			else //input
 			{
 				t.clear();
 
-				int listsize = 0;
+				int listsize(0);
 				if (!this->Serialize("*size", listsize)) return false;
 
 				for (int i = 0; i < listsize; i++)
@@ -144,12 +146,11 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto & i : t)
+				for (typename std::set <T>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << count;
-					if (!this->Serialize(itemname.str(), const_cast<T&>(i))) return false;
-					count++;
+					if (!this->Serialize(itemname.str(), const_cast<T&>(*i))) return false;
 				}
 			}
 			else //input
@@ -163,7 +164,8 @@ class Serializer
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << i+1;
-
+					//t.push_back(T());
+					//if (!this->Serialize(itemname.str(), t.back())) return false;
 					T prototype;
 					if (!this->Serialize(itemname.str(), prototype)) return false;
 					t.insert(prototype);
@@ -185,17 +187,17 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto & i : t)
+				for (typename std::vector <T>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << count;
-					if (!this->Serialize(itemname.str(), i)) return false;
+					if (!this->Serialize(itemname.str(), *i)) return false;
 				}
 			}
 			else //input
 			{
 				//t.clear();
-				int listsize = 0;
+				int listsize;
 				if (!this->Serialize("*size", listsize)) return false;
 				t.resize(listsize); //only resize, don't clear; we don't want to throw away information
 
@@ -203,6 +205,8 @@ class Serializer
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << i+1;
+					//t.push_back(T());
+					//if (!this->Serialize(itemname.str(), t.back())) return false;
 					if (!this->Serialize(itemname.str(), t[i])) return false;
 				}
 			}
@@ -220,20 +224,18 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto i : t)
+				for (std::vector <bool>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << count;
-
-					bool booli = i;
+					bool booli = *i;
 					if (!this->Serialize(itemname.str(), booli)) return false;
-					count++;
 				}
 			}
 			else //input
 			{
 				//t.clear();
-				int listsize = 0;
+				int listsize;
 				if (!this->Serialize("*size", listsize)) return false;
 				t.resize(listsize); //only resize, don't clear; we don't want to throw away information
 
@@ -241,7 +243,8 @@ class Serializer
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << i+1;
-
+					//t.push_back(T());
+					//if (!this->Serialize(itemname.str(), t.back())) return false;
 					bool booli;
 					if (!this->Serialize(itemname.str(), booli)) return false;
 					t[i] = booli;
@@ -263,18 +266,17 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto & i : t)
+				for (typename std::deque <T>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << count;
-					if (!this->Serialize(itemname.str(), i)) return false;
-					count++;
+					if (!this->Serialize(itemname.str(), *i)) return false;
 				}
 			}
 			else //input
 			{
 				//t.clear();
-				int listsize = 0;
+				int listsize;
 				if (!this->Serialize("*size", listsize)) return false;
 				t.resize(listsize); //only resize, don't clear; we don't want to throw away information
 
@@ -282,6 +284,8 @@ class Serializer
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << i+1;
+					//t.push_back(T());
+					//if (!this->Serialize(itemname.str(), t.back())) return false;
 					if (!this->Serialize(itemname.str(), t[i])) return false;
 				}
 			}
@@ -301,7 +305,7 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto & i : t)
+				for (typename std::map <U,T>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream countstr;
 					countstr << count;
@@ -309,17 +313,16 @@ class Serializer
 					std::string keystr = "*key" + countstr.str();
 					std::string valstr = "*value" + countstr.str();
 
-					U tempkey = i.first;
+					U tempkey = i->first;
 					if (!this->Serialize(keystr, tempkey)) return false;
-					if (!this->Serialize(valstr, i.second)) return false;
-					count++;
+					if (!this->Serialize(valstr, i->second)) return false;
 				}
 			}
 			else //input
 			{
 				t.clear();
 
-				int listsize = 0;
+				int listsize;
 				if (!this->Serialize("*size", listsize)) return false;
 
 				for (int i = 0; i < listsize; i++)
@@ -339,10 +342,11 @@ class Serializer
 			return true;
 		}
 
+#ifdef USE_TR1
 		///serialization overload for a complex type that we don't have the ability to change,
 		/// so we explicitly define the serialization process here. returns true on success
 		template <typename U, typename T, typename H>
-		bool Serialize(const std::string & name, std::unordered_map <U, T, H> & t)
+		bool Serialize(const std::string & name, std::tr1::unordered_map <U, T, H> & t)
 		{
 			ComplexTypeStart(name);
 			if (this->GetIODirection() == DIRECTION_OUTPUT)
@@ -351,7 +355,7 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto & i : t)
+				for (typename std::tr1::unordered_map <U,T>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream countstr;
 					countstr << count;
@@ -359,17 +363,16 @@ class Serializer
 					std::string keystr = "*key" + countstr.str();
 					std::string valstr = "*value" + countstr.str();
 
-					U tempkey = i.first;
+					U tempkey = i->first;
 					if (!this->Serialize(keystr, tempkey)) return false;
-					if (!this->Serialize(valstr, i.second)) return false;
-					count++;
+					if (!this->Serialize(valstr, i->second)) return false;
 				}
 			}
 			else //input
 			{
 				t.clear();
 
-				int listsize = 0;
+				int listsize;
 				if (!this->Serialize("*size", listsize)) return false;
 
 				for (int i = 0; i < listsize; i++)
@@ -392,7 +395,7 @@ class Serializer
 		///serialization overload for a complex type that we don't have the ability to change,
 		/// so we explicitly define the serialization process here. returns true on success
 		template <typename T, typename H>
-		bool Serialize(const std::string & name, std::unordered_set <T, H> & t)
+		bool Serialize(const std::string & name, std::tr1::unordered_set <T, H> & t)
 		{
 			ComplexTypeStart(name);
 			if (this->GetIODirection() == DIRECTION_OUTPUT)
@@ -401,26 +404,26 @@ class Serializer
 				if (!this->Serialize("*size", listsize)) return false;
 
 				int count = 1;
-				for (auto & i : t)
+				for (typename std::tr1::unordered_set <T>::iterator i = t.begin(); i != t.end(); ++i, ++count)
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << count;
-					if (!this->Serialize(itemname.str(), const_cast<T&>(i))) return false;
-					count++;
+					if (!this->Serialize(itemname.str(), const_cast<T&>(*i))) return false;
 				}
 			}
 			else //input
 			{
 				t.clear();
 
-				int listsize = 0;
+				int listsize(0);
 				if (!this->Serialize("*size", listsize)) return false;
 
 				for (int i = 0; i < listsize; i++)
 				{
 					std::ostringstream itemname;
 					itemname << "*item" << i+1;
-
+					//t.push_back(T());
+					//if (!this->Serialize(itemname.str(), t.back())) return false;
 					T prototype;
 					if (!this->Serialize(itemname.str(), prototype)) return false;
 					t.insert(prototype);
@@ -429,6 +432,7 @@ class Serializer
 			ComplexTypeEnd(name);
 			return true;
 		}
+#endif
 
 		enum Direction
 		{
@@ -510,10 +514,10 @@ class TreeMap
 			}
 			else
 			{
-				for (const auto & b : branches_)
+				for (typename std::map <std::string, TreeMap>::const_iterator i = branches_.begin(); i != branches_.end(); ++i)
 				{
-					location.push_back(b.first);
-					b.second.Print(out, location);
+					location.push_back(i->first);
+					i->second.Print(out, location);
 					location.pop_back();
 				}
 			}
@@ -523,9 +527,9 @@ class TreeMap
 		std::vector <std::string> GetBranches() const
 		{
 			std::vector <std::string> leavesout;
-			for (const auto & b : branches_)
+			for (typename std::map <std::string, TreeMap>::const_iterator i = branches_.begin(); i != branches_.end(); ++i)
 			{
-				leavesout.push_back(b.first);
+				leavesout.push_back(i->first);
 			}
 			return leavesout;
 		}
@@ -551,7 +555,7 @@ class TreeMap
 		///returns NULL if the branch does not exist
 		TreeMap * branch ( const std::string & name )
 		{
-			auto i = branches_.find ( name );
+			typename std::map <std::string, TreeMap>::iterator i = branches_.find ( name );
 			if ( i == branches_.end() )
 				return NULL;
 			else
@@ -560,7 +564,7 @@ class TreeMap
 		///returns NULL if the branch does not exist
 		const TreeMap * branch ( const std::string & name ) const
 		{
-			auto i = branches_.find ( name );
+			typename std::map <std::string, TreeMap>::const_iterator i = branches_.find ( name );
 			if ( i == branches_.end() )
 				return NULL;
 			else
@@ -572,9 +576,9 @@ class TreeMap
 		{
 			const TreeMap * curmap = this;
 
-			for (const auto & i : location)
+			for ( std::deque <std::string>::const_iterator i = location.begin(); i != location.end(); ++i )
 			{
-				curmap = curmap->branch ( i );
+				curmap = curmap->branch ( *i );
 
 				if ( !curmap ) //branch not found
 				{
@@ -589,9 +593,9 @@ class TreeMap
 		{
 			TreeMap * curmap = this;
 
-			for (const auto & i : location)
+			for ( std::deque <std::string>::const_iterator i = location.begin(); i != location.end(); ++i )
 			{
-				curmap = curmap->branch ( i );
+				curmap = curmap->branch ( *i );
 
 				if ( !curmap ) //branch not found
 				{
@@ -607,9 +611,9 @@ class TreeMap
 		{
 			const TreeMap * curmap = this;
 
-			for (const auto & i : location)
+			for ( std::deque <std::string>::const_iterator i = location.begin(); i != location.end(); ++i )
 			{
-				curmap = curmap->branch ( i );
+				curmap = curmap->branch ( *i );
 
 				if ( !curmap ) //branch not found
 				{
@@ -631,12 +635,12 @@ class TreeMap
 		{
 			TreeMap * curmap = this;
 
-			for (const auto & i : location)
+			for ( std::deque <std::string>::const_iterator i = location.begin(); i != location.end(); ++i )
 			{
-				TreeMap * nextmap = curmap->branch ( i );
+				TreeMap * nextmap = curmap->branch ( *i );
 
 				if ( !nextmap ) //branch not found
-					nextmap = &curmap->AddBranch ( i );
+					nextmap = &curmap->AddBranch ( *i );
 
 				curmap = nextmap;
 			}
@@ -661,7 +665,7 @@ class TreeMap
 		{
 			std::string imploded;
 
-			for (auto i = container.begin(); i != container.end(); ++i)
+			for (std::deque <std::string>::const_iterator i = container.begin(); i != container.end(); ++i)
 			{
 				if (i != container.begin())
 					imploded.push_back(implode_delimiter);
@@ -676,13 +680,14 @@ class TreeMap
 		{
 			leaf_ = othertree.leaf_;
 
-			for (const auto & b : othertree.branches_)
+			for (typename std::map <std::string, TreeMap>::const_iterator i = othertree.branches_.begin();
+				i != othertree.branches_.end(); ++i)
 			{
-				TreeMap * curmap = branch(b.first);
+				TreeMap * curmap = branch(i->first);
 				if (!curmap)
-					branches_[b.first] = b.second;
+					branches_[i->first] = i->second;
 				else
-					curmap->Merge(b.second);
+					curmap->Merge(i->second);
 			}
 		}
 };
@@ -704,12 +709,12 @@ class TextOutputSerializer : public SerializerOutput
 		std::string Escape(const std::string & input) const
 		{
 			std::string outputstr;
-			for (char c : input)
+			for (unsigned int i = 0; i < input.length(); i++)
 			{
-				if (c == '\n')
+				if (input[i] == '\n')
 					outputstr.append("\\n");
 				else
-					outputstr.append(1, c);
+					outputstr.append(1, input[i]);
 			}
 			return outputstr;
 		}
@@ -728,12 +733,17 @@ class TextOutputSerializer : public SerializerOutput
 		}
 
 		template <typename T>
-		bool WriteData(const std::string & name, const T & i)
+		bool WriteData(const std::string & name, const T & i, bool precise)
 		{
 			if (name != "*size") // these get automatically generated during input, so we don't need to bother outputting them
 			{
+				std::string n = TransformToFriendlyName(name);
 				PrintIndent();
-				out_ << TransformToFriendlyName(name) << " = " << i << std::endl;
+				out_ << n << " = ";
+				if (precise)
+					out_ << std::scientific << std::setprecision (20) << i << std::endl;
+				else
+					out_ << i << std::endl;
 			}
 			return true;
 		}
@@ -757,36 +767,31 @@ class TextOutputSerializer : public SerializerOutput
 		}
 
 	public:
-		TextOutputSerializer(std::ostream & newout) : out_(newout), indent_(0)
-		{
-			out_ << std::scientific << std::setprecision (20);
-		}
-
-		using Serializer::Serialize;
+		TextOutputSerializer(std::ostream & newout) : out_(newout),indent_(0) {}
 
 		virtual bool Serialize(const std::string & name, int & i)
 		{
-			return WriteData(name, i);
+			return WriteData(name, i, false);
 		}
 
 		virtual bool Serialize(const std::string & name, unsigned int & i)
 		{
-			return WriteData(name, i);
+			return WriteData(name, i, false);
 		}
 
 		virtual bool Serialize(const std::string & name, float & i)
 		{
-			return WriteData(name, i);
+			return WriteData(name, i, true);
 		}
 
 		virtual bool Serialize(const std::string & name, double & i)
 		{
-			return WriteData(name, i);
+			return WriteData(name, i, true);
 		}
 
 		virtual bool Serialize(const std::string & name, std::string & i)
 		{
-			return WriteData(name, Escape(i));
+			return WriteData(name, Escape(i), false);
 		}
 };
 
@@ -1057,8 +1062,6 @@ class TextInputSerializer : public SerializerInput
 			return true;
 		}
 
-		using Serializer::Serialize;
-
 		virtual bool Serialize(const std::string & name, int & i)
 		{
 			return ReadData(name, i);
@@ -1110,8 +1113,8 @@ class BinaryOutputSerializer : public SerializerOutput
 
 		void ByteSwap(unsigned char * b, int n) const
 		{
-			int i = 0;
-			int j = n-1;
+			register int i = 0;
+			register int j = n-1;
 			while (i<j)
 			{
 				std::swap(b[i], b[j]);
@@ -1146,8 +1149,6 @@ class BinaryOutputSerializer : public SerializerOutput
 
 	public:
 		BinaryOutputSerializer(std::ostream & newout) : out_(newout),bigendian_(IsBigEndian()) {}
-
-		using Serializer::Serialize;
 
 		virtual bool Serialize(const std::string & name, int & i)
 		{
@@ -1193,8 +1194,8 @@ class BinaryInputSerializer : public SerializerInput
 
 		void ByteSwap(unsigned char * b, int n) const
 		{
-			int i = 0;
-			int j = n-1;
+			register int i = 0;
+			register int j = n-1;
 			while (i<j)
 			{
 				std::swap(b[i], b[j]);
@@ -1218,7 +1219,7 @@ class BinaryInputSerializer : public SerializerInput
 			return true;
 		}
 
-		bool ReadStringData(const std::string & name, std::string & s)
+		bool ReadStringData(const std::string & name, std::string & i)
 		{
 			(void) name;
 			int strlen = 0;
@@ -1231,10 +1232,10 @@ class BinaryInputSerializer : public SerializerInput
 				delete [] inbuffer;
 				return false;
 			}
-			s.clear();
+			i.clear();
 			for (int n = 0; n < strlen; n++)
 			{
-				s.push_back(inbuffer[n]);
+				i.push_back(inbuffer[n]);
 			}
 			delete [] inbuffer;
 			return true;
@@ -1242,8 +1243,6 @@ class BinaryInputSerializer : public SerializerInput
 
 	public:
 		BinaryInputSerializer(std::istream & newin) : in_(newin),bigendian_(IsBigEndian()) {}
-
-		using Serializer::Serialize;
 
 		virtual bool Serialize(const std::string & name, int & i)
 		{

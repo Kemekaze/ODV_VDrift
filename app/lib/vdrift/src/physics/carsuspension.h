@@ -23,6 +23,7 @@
 #include "LinearMath/btVector3.h"
 #include "LinearMath/btQuaternion.h"
 #include "linearinterp.h"
+#include "joeserialize.h"
 #include "macros.h"
 
 #include <iosfwd>
@@ -48,8 +49,6 @@ struct CarSuspensionInfo
 	btScalar caster; ///< caster angle in degrees. sign convention depends on the side
 	btScalar toe; ///< toe angle in degrees. sign convention depends on the side
 
-	btScalar inv_mass; ///< 1 / unsprung mass
-
 	CarSuspensionInfo(); ///< default constructor makes an S2000-like car
 };
 
@@ -60,9 +59,9 @@ public:
 
 	virtual ~CarSuspension() {}
 
-	btScalar GetAntiRoll() const {return info.anti_roll;}
+	const btScalar & GetAntiRoll() const {return info.anti_roll;}
 
-	btScalar GetMaxSteeringAngle() const {return info.steering_angle;}
+	const btScalar & GetMaxSteeringAngle() const {return info.steering_angle;}
 
 	/// wheel orientation relative to car
 	const btQuaternion & GetWheelOrientation() const {return orientation;}
@@ -74,59 +73,45 @@ public:
 	virtual btVector3 GetWheelPosition(btScalar displacement) = 0;
 
 	/// force acting onto wheel
-	btScalar GetWheelForce() const {return wheel_force;}
+	const btScalar & GetWheelForce() const {return wheel_force;}
 
 	/// suspension force acting onto car body
-	btScalar GetForce() const {return force;}
+	const btScalar & GetForce() const {return force;}
+
+	/// relative wheel velocity
+	const btScalar & GetVelocity() const {return wheel_velocity;}
 
 	/// wheel overtravel
-	btScalar GetOvertravel() const {return overtravel;}
+	const btScalar & GetOvertravel() const {return overtravel;}
 
 	/// wheel displacement
-	btScalar GetDisplacement() const {return displacement;}
+	const btScalar & GetDisplacement() const {return displacement;}
 
 	/// displacement fraction: 0.0 fully extended, 1.0 fully compressed
 	btScalar GetDisplacementFraction() const {return displacement / info.travel;}
 
-	btScalar GetDisplacement(btScalar force) const;
-
 	/// steering: -1.0 is maximum right lock and 1.0 is maximum left lock
-	virtual void SetSteering(btScalar value);
+	virtual void SetSteering(const btScalar & value);
 
-	/// override current displacement value
-	void SetDisplacement(btScalar value);
+	void SetDisplacement ( const btScalar & value );
 
-	/// update displacement, simulate wheel rebound to limit negative delta
-	void UpdateDisplacement(btScalar displacement_delta, btScalar dt);
+	btScalar GetForce ( btScalar dt );
 
-	/// compute suspension and wheel contact forces
-	void UpdateForces(btScalar roll_delta, btScalar dt);
+	void DebugPrint(std::ostream & out) const;
 
-	template <class Stream>
-	void DebugPrint(Stream & out) const
-	{
-		out << "---Suspension---" << "\n";
-		out << "Displacement: " << displacement << "\n";
-		out << "Spring Force: " << spring_force << "\n";
-		out << "Damping Force: " << damp_force << "\n";
-		out << "Steering angle: " << steering_angle * btScalar(180 / M_PI) << "\n";
-	}
-
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
 		_SERIALIZE_(s, steering_angle);
 		_SERIALIZE_(s, displacement);
-		_SERIALIZE_(s, last_displacement);
-		_SERIALIZE_(s, force);
 		return true;
 	}
 
 	static bool Load(
 		const PTree & cfg_wheel,
-		btScalar wheel_mass,
 		CarSuspension *& suspension,
 		std::ostream & error);
+
+	friend class joeserialize::Serializer;
 
 protected:
 	CarSuspensionInfo info;
@@ -145,8 +130,8 @@ protected:
 	btScalar overtravel;
 	btScalar displacement;
 	btScalar last_displacement;
+	btScalar wheel_velocity;
 	btScalar wheel_force;
-	btScalar wheel_contact;
 
 	void Init(const CarSuspensionInfo & info);
 };

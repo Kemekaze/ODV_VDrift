@@ -21,12 +21,11 @@
 #include "glcore.h"
 #include <ostream>
 
-#ifdef DEBUG
 bool CheckForOpenGLErrors(
 	const std::string & activity_description,
 	std::ostream & error_output)
 {
-
+#ifdef DEBUG
 	// glGetError stalls graphics driver, disable in release mode
 	GLenum error = glGetError();
 	if (error != GL_NO_ERROR)
@@ -35,13 +34,6 @@ bool CheckForOpenGLErrors(
 		error_output << "OpenGL error \"" << error_string << "\" during: " << activity_description << std::endl;
 		return true;
 	}
-	return false;
-}
-#else
-bool CheckForOpenGLErrors(
-	const std::string & /*activity_description*/,
-	std::ostream & /*error_output*/)
-{
-	return false;
-}
 #endif // DEBUG
+	return false;
+}

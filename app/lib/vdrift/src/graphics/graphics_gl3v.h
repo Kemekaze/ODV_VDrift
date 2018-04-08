@@ -48,8 +48,8 @@ public:
 	/// returns true on success
 	virtual bool Init(
 		const std::string & shaderpath,
-		unsigned resx, unsigned resy,
-		unsigned antialiasing,
+		unsigned resx, unsigned resy, unsigned depthbpp,
+		bool fullscreen, unsigned antialiasing,
 		bool enableshadows, int shadow_distance,
 		int shadow_quality, int reflection_type,
 		const std::string & static_reflectionmap_file,
@@ -94,8 +94,6 @@ public:
 
 	virtual bool GetShadows() const;
 
-	virtual void SetFixedSkybox(bool enable);
-
 	virtual void SetSunDirection(const Vec3 & value);
 
 	virtual void SetContrast(float value);
@@ -116,7 +114,6 @@ private:
 	int w, h;
 	bool logNextGlFrame; // used to take a gl log capture after reloading shaders if gl logging is enabled
 	bool initialized;
-	bool fixed_skybox;
 	Vec3 lastCameraPosition;
 	Vec3 light_direction;
 
@@ -175,10 +172,6 @@ private:
 
 	// a set storing all configuration option conditions (bloom enabled, etc)
 	std::set <std::string> conditions;
-
-	// cache drawable attributes ids
-	DrawableAttributes drawAttribs;
-	static void initDrawableAttributes(DrawableAttributes & attribs, StringIdMap & map);
 
 	Texture static_reflection;
 

@@ -37,21 +37,21 @@ public:
 	/// retrieve shared object if in cache
 	template <class T>
 	bool get(
-		std::shared_ptr<T> & sptr,
+		std::tr1::shared_ptr<T> & sptr,
 		const std::string & path,
 		const std::string & name);
 
 	/// retrieve shared object, load if not in cache
 	template <class T>
 	bool load(
-		std::shared_ptr<T> & sptr,
+		std::tr1::shared_ptr<T> & sptr,
 		const std::string & path,
 		const std::string & name);
 
 	/// support additional optional parameters
 	template <class T, class P>
 	bool load(
-		std::shared_ptr<T> & sptr,
+		std::tr1::shared_ptr<T> & sptr,
 		const std::string & path,
 		const std::string & name,
 		const P & param);
@@ -78,7 +78,7 @@ private:
 	};
 
 	template <class T>
-	class CacheShared : public Cache, public std::map<std::string, std::shared_ptr<T> >
+	class CacheShared : public Cache, public std::map<std::string, std::tr1::shared_ptr<T> >
 	{
 		void log(std::ostream & log) const;
 		size_t size() const;
@@ -132,13 +132,13 @@ private:
 	/// get implementation
 	template <class T>
 	bool _get(
-		std::shared_ptr<T> & sptr,
+		std::tr1::shared_ptr<T> & sptr,
 		const std::string & name);
 
 	/// load implementation
 	template <class T, class P>
 	bool _load(
-		std::shared_ptr<T> & sptr,
+		std::tr1::shared_ptr<T> & sptr,
 		const std::vector<std::string> & basepaths,
 		const std::string & relpath,
 		const std::string & name,
@@ -146,12 +146,12 @@ private:
 
 	/// get default object instance
 	template <class T>
-	bool _getdefault(std::shared_ptr<T> & sptr);
+	bool _getdefault(std::tr1::shared_ptr<T> & sptr);
 };
 
 template <class T>
 inline bool ContentManager::get(
-	std::shared_ptr<T> & sptr,
+	std::tr1::shared_ptr<T> & sptr,
 	const std::string & path,
 	const std::string & name)
 {
@@ -163,7 +163,7 @@ inline bool ContentManager::get(
 
 template <class T>
 inline bool ContentManager::load(
-	std::shared_ptr<T> & sptr,
+	std::tr1::shared_ptr<T> & sptr,
 	const std::string & path,
 	const std::string & name)
 {
@@ -172,7 +172,7 @@ inline bool ContentManager::load(
 
 template <class T, class P>
 inline bool ContentManager::load(
-	std::shared_ptr<T> & sptr,
+	std::tr1::shared_ptr<T> & sptr,
 	const std::string & path,
 	const std::string & name,
 	const P & param)
@@ -187,12 +187,12 @@ inline bool ContentManager::load(
 
 template <class T>
 inline bool ContentManager::_get(
-	std::shared_ptr<T> & sptr,
+	std::tr1::shared_ptr<T> & sptr,
 	const std::string & name)
 {
 	// retrieve from cache
 	CacheShared<T> & cache = factory_cached;
-	auto i = cache.find(name);
+	typename CacheShared<T>::const_iterator i = cache.find(name);
 	if (i != cache.end())
 	{
 		sptr = i->second;
@@ -203,7 +203,7 @@ inline bool ContentManager::_get(
 
 template <class T, class P>
 inline bool ContentManager::_load(
-	std::shared_ptr<T> & sptr,
+	std::tr1::shared_ptr<T> & sptr,
 	const std::vector<std::string> & basepaths,
 	const std::string & relpath,
 	const std::string & name,
@@ -217,9 +217,9 @@ inline bool ContentManager::_load(
 
 	// load from basepaths
 	Factory<T>& factory = getFactory<T>();
-	for (const auto & basepath : basepaths)
+	for (size_t i = 0; i < basepaths.size(); ++i)
 	{
-		if (factory.create(sptr, error, basepath, relpath, name, param))
+		if (factory.create(sptr, error, basepaths[i], relpath, name, param))
 		{
 			// cache loaded content
 			CacheShared<T> & cache = factory_cached;
@@ -232,7 +232,7 @@ inline bool ContentManager::_load(
 }
 
 template <class T>
-inline bool ContentManager::_getdefault(std::shared_ptr<T> & sptr)
+inline bool ContentManager::_getdefault(std::tr1::shared_ptr<T> & sptr)
 {
 	sptr = Factory<T>(factory_cached).getDefault();
 	return false;
@@ -241,7 +241,7 @@ inline bool ContentManager::_getdefault(std::shared_ptr<T> & sptr)
 template <class T>
 inline void ContentManager::CacheShared<T>::log(std::ostream & log) const
 {
-	auto it = CacheShared<T>::begin();
+	typename CacheShared<T>::const_iterator it = CacheShared<T>::begin();
 	while (it != CacheShared<T>::end())
 	{
 		log << it->second.use_count() << " : " << it->first;
@@ -251,13 +251,13 @@ inline void ContentManager::CacheShared<T>::log(std::ostream & log) const
 template <class T>
 inline size_t ContentManager::CacheShared<T>::size() const
 {
-	return std::map<std::string, std::shared_ptr<T> >::size();
+	return std::map<std::string, std::tr1::shared_ptr<T> >::size();
 }
 
 template <class T>
 inline void ContentManager::CacheShared<T>::sweep()
 {
-	auto it = CacheShared<T>::begin();
+	typename CacheShared<T>::iterator it = CacheShared<T>::begin();
 	while (it != CacheShared<T>::end())
 	{
 		if (it->second.unique())

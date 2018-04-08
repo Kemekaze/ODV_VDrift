@@ -24,7 +24,7 @@ RUN cd /app \
     default-jre \
     default-jdk
 
-ADD ./vdrift /app
+#ADD ./vdrift /app
 #Install VDrift
 RUN apt-get update -y \
  && apt-get install software-properties-common -y \
@@ -36,10 +36,10 @@ RUN apt-get update -y \
     libsdl2-image-dev \
     libbullet-dev \
     libvorbis-dev \
-    libcurl4-gnutls-dev \
- && if [ ! -f ${VDRIFT_FILE} ]; then wget ${VDRIFT_URL}; fi \
- && tar -jxf ${VDRIFT_FILE} \
- && rm ${VDRIFT_FILE}
+    libcurl4-gnutls-dev
+# && if [ ! -f ${VDRIFT_FILE} ]; then wget ${VDRIFT_URL}; fi \
+# && tar -jxf ${VDRIFT_FILE} \
+# && rm ${VDRIFT_FILE}
 
 #install OpenDaVINCHI
 RUN wget -O - -q \
@@ -71,5 +71,6 @@ RUN wget -O - -q \
     opendavinci-lib \
     opendavinci-odtools \
     opendavinci-odsupercomponent \
-   	libcluon \
- && git clone https://github.com/se-research/OpenDaVINCI.git
+    opendlv-lib \
+   	libcluon 
+# && git clone https://github.com/se-research/OpenDaVINCI.git

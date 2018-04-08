@@ -24,8 +24,6 @@ GuiLabel::GuiLabel() :
 	m_font(0),
 	m_x(0),
 	m_y(0),
-	m_w(0),
-	m_h(0),
 	m_scalex(0),
 	m_scaley(0),
 	m_align(0)
@@ -42,13 +40,14 @@ void GuiLabel::SetupDrawable(
 	SceneNode & scene,
 	const Font & font, int align,
 	float scalex, float scaley,
-	float xywh[4], float z)
+	float x, float y,
+	float w, float h, float z)
 {
 	m_font = &font;
-	m_x = xywh[0];
-	m_y = xywh[1];
-	m_w = xywh[2];
-	m_h = xywh[3];
+	m_x = x;
+	m_y = y;
+	m_w = w;
+	m_h = h;
 	m_scalex = scalex;
 	m_scaley = scaley;
 	m_align = align;
@@ -57,31 +56,28 @@ void GuiLabel::SetupDrawable(
 	Drawable & drawref = GetDrawable(scene);
 	drawref.SetDrawOrder(z);
 
-	m_text_draw.Set(drawref, font, m_text, m_x, m_y, scalex, scaley, m_rgb[0], m_rgb[1], m_rgb[2]);
-}
-
-bool GuiLabel::GetProperty(const std::string & name, Slot1<const std::string &> *& slot)
-{
-	if (name == "text")
-		return (slot = &set_value);
-	return GuiWidget::GetProperty(name, slot);
+	float textw = 0;
+	if (align == -1) x -= w * 0.5;
+	else if (align == 0) x -= textw * 0.5;
+	else if (align == 1) x -= (textw - w * 0.5);
+	m_text_draw.Set(drawref, font, m_text, x, y, scalex, scaley, m_r, m_g, m_b);
 }
 
 void GuiLabel::SetText(const std::string & text)
 {
-	if (m_text != text)
-	{
-		assert(m_font);
-		m_text = text;
+	assert(m_font);
+	m_text = text;
+	float x = m_x;
+	float textw = m_font->GetWidth(m_text) * m_scalex;
+	if (m_align == -1) x -= m_w * 0.5;
+	else if (m_align == 0) x -= textw * 0.5;
+	else if (m_align == 1) x -= (textw - m_w * 0.5);
+	m_text_draw.Revise(*m_font, m_text, x, m_y, m_scalex, m_scaley);
+}
 
-		float x = m_x;
-		float textw = m_font->GetWidth(m_text) * m_scalex;
-		if (m_align == -1) x -= m_w * 0.5f;
-		else if (m_align == 0) x -= textw * 0.5f;
-		else if (m_align == 1) x -= (textw - m_w * 0.5f);
-
-		m_text_draw.Revise(*m_font, m_text, x, m_y, m_scalex, m_scaley);
-	}
+const std::string & GuiLabel::GetText() const
+{
+	return m_text;
 }
 
 Drawable & GuiLabel::GetDrawable(SceneNode & scene)

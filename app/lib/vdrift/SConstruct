@@ -6,7 +6,6 @@ from time import gmtime, strftime
 #---------------#
 opts = Variables('vdrift.conf', ARGUMENTS)
 opts.Add('arch', 'Target architecture to compile vdrift for (x86, 686, p4, axp, a64, prescott, nocona, core2)', 'x86')
-opts.Add('pkg_config', 'Executable for pkg-config', 'pkg-config')
 opts.Add('destdir', 'Staging area to install VDrift to.  Useful for packagers. ', '')
 opts.Add('builddir_release', 'Release build directory.', 'build')
 opts.Add('builddir_debug', 'Debug build directory.', 'build')
@@ -19,6 +18,7 @@ opts.Add(BoolVariable('os_cc', 'Set this to 1 if you want to use the operating s
 opts.Add(BoolVariable('os_cxx', 'Set this to 1 if you want to use the operating system\'s C++ compiler environment variable.', 0))
 opts.Add(BoolVariable('os_cxxflags', 'Set this to 1 if you want to use the operating system\'s C++ compiler flags environment variable.', 0))
 opts.Add(BoolVariable('use_distcc', 'Set this to 1 to enable distributed compilation', 0))
+opts.Add(BoolVariable('force_feedback', 'Enable force-feedback support', 0))
 opts.Add(BoolVariable('profiling', 'Turn on profiling output', 0))
 opts.Add(BoolVariable('efficiency', 'Turn on compile-time efficiency warnings', 0))
 opts.Add(BoolVariable('verbose', 'Show verbose compiling output', 1)) 
@@ -37,7 +37,7 @@ default_bindir = "bin"
 #---------------#
 # FreeBSD build #
 #---------------#
-if sys.platform in ['freebsd6', 'freebsd7', 'freebsd8', 'freebsd9', 'freebsd10']:
+if (sys.platform == 'freebsd6') or (sys.platform == 'freebsd7') or (sys.platform == 'freebsd8') or (sys.platform == 'freebsd9'):
     if 'LOCALBASE' in os.environ:
         LOCALBASE = os.environ['LOCALBASE']
     else:
@@ -71,7 +71,7 @@ elif sys.platform == 'darwin':
 
     env = Environment(ENV = os.environ,
         CPPPATH = ['#src', '#tools/osx/Frameworks', '#tools/osx/Frameworks/SDL.framework/Headers'],
-        CCFLAGS = ['-std=c++11', '-Wall', '-Wextra'],
+        CCFLAGS = ['-Wall', '-Wextra'],
         CXXFLAGS = Split("$CCFLAGS -Wno-non-virtual-dtor -Wunused-parameter"),
         LIBPATH = ['.'],
         FRAMEWORKPATH = ['tools/osx/Frameworks/'],
@@ -117,13 +117,13 @@ elif sys.platform == 'darwin':
 #---------------#
 # Windows build #
 #---------------#
-elif sys.platform in ['win32', 'msys', 'cygwin']:
+elif ( 'win32' == sys.platform or 'cygwin' == sys.platform ):
     env = Environment(ENV = os.environ, tools = ['mingw'],
-        CCFLAGS = ['-std=c++11', '-Wall', '-Wextra', '-mwindows'],
-        CPPPATH = ['#src', '#vdrift-win/include', '#vdrift-win/bullet'],
+        CCFLAGS = ['-Wall', '-Wextra', '-Wno-unused-parameters', '-mwindows', '-mno-cygwin'],
+        CPPPATH = ['#vdrift-win/include', '#vdrift-win/bullet'],
         LIBPATH = ['#vdrift-win/dll'],
-        #LINKFLAGS = ['-static-libgcc', '-static-libstdc++'],
-        CPPDEFINES = ['_USE_MATH_DEFINES'],
+		LINKFLAGS = ['-static-libgcc', '-static-libstdc++'],
+        CPPDEFINES = ['_REENTRANT'],
         CC = 'gcc', CXX = 'g++',
         options = opts)
     check_headers = []
@@ -135,7 +135,7 @@ elif sys.platform in ['win32', 'msys', 'cygwin']:
 else:
     env = Environment(ENV = os.environ,
         CPPPATH = ['#src'],
-        CCFLAGS = ['-std=c++11', '-Wall', '-Wextra'],#, '-pthread'],
+        CCFLAGS = ['-Wall', '-Wextra', '-Wno-unused-parameter'],#, '-pthread'],
         LIBPATH = ['.', '#lib'],
         #LINKFLAGS = ['-pthread'],
         CC = 'gcc', CXX = 'g++',
@@ -358,7 +358,7 @@ Note: The options you enter will be saved in the file vdrift.conf and they will 
 #--------------------------#
 # Check for Libs & Headers #
 #--------------------------#
-env.ParseConfig(env['pkg_config'] + ' bullet --libs --cflags')
+env.ParseConfig('pkg-config bullet --libs --cflags')
 conf = Configure(env)
 for header in check_headers:
     if not conf.CheckCXXHeader(header):
@@ -378,7 +378,7 @@ env = conf.Finish()
 env['data_directory'] = env['destdir'] + env['prefix'] + '/' + env['datadir']
 env['locale_directory'] = env['destdir'] + env['prefix'] + '/' + env['localedir']
 cppdefines.append(("SETTINGS_DIR", '"%s"' % env['settings']))
-if sys.platform in ['win32', 'msys', 'cygwin']:
+if ( 'win32' == sys.platform or 'cygwin' == sys.platform ):
     env['use_binreloc'] = False
     env['use_apbuild'] = False
     env['data_directory'] = "./data"
@@ -439,6 +439,12 @@ if env['use_binreloc']:
 if env['use_distcc']:
     env['CXX'] = 'distcc '+env['CXX']
     env['CC'] = 'distcc '+env['CC']
+
+#------------------------#
+# Force Feedback support #
+#------------------------#
+if env['force_feedback']:
+    cppdefines.append('ENABLE_FORCE_FEEDBACK')
 
 #----------------------#
 # OS compiler settings #

@@ -21,10 +21,14 @@
 #define _CARFUELTANK_H
 
 #include "LinearMath/btVector3.h"
+#include "joeserialize.h"
 #include "macros.h"
+
+#include <iostream>
 
 class CarFuelTank
 {
+friend class joeserialize::Serializer;
 public:
 	//default constructor makes an S2000-like car
 	CarFuelTank() :
@@ -36,12 +40,20 @@ public:
 		// ctor
 	}
 
-	void SetCapacity(btScalar value)
+	void DebugPrint(std::ostream & out) const
+	{
+		out << "---Fuel Tank---" << "\n";
+		out << "Current volume: " << volume << "\n";
+		out << "Capacity: " << capacity << "\n";
+		out << "Mass: " << mass << "\n";
+	}
+
+	void SetCapacity(const btScalar & value)
 	{
 		capacity = value;
 	}
 
-	void SetDensity(btScalar value)
+	void SetDensity(const btScalar & value)
 	{
 		density = value;
 		mass = density * volume;
@@ -63,7 +75,7 @@ public:
 		return mass;
 	}
 
-	void SetVolume(btScalar value)
+	void SetVolume(const btScalar & value)
 	{
 		volume = value;
 		mass = density * volume;
@@ -76,7 +88,7 @@ public:
 
 	bool Empty() const
 	{
-		return (volume <= 0);
+		return (volume <= 0.0);
 	}
 
 	btScalar FuelPercent() const
@@ -92,17 +104,7 @@ public:
 		volume = mass / density;
 	}
 
-	template <class Stream>
-	void DebugPrint(Stream & out) const
-	{
-		out << "---Fuel Tank---" << "\n";
-		out << "Current volume: " << volume << "\n";
-		out << "Capacity: " << capacity << "\n";
-		out << "Mass: " << mass << "\n";
-	}
-
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
 		_SERIALIZE_(s, mass);
 		_SERIALIZE_(s, volume);
@@ -118,6 +120,13 @@ private:
 	//variables
 	btScalar mass;
 	btScalar volume;
+
+	void UpdateMass()
+	{
+
+	}
+
+
 };
 
 #endif

@@ -21,15 +21,20 @@
 #define _CARCLUTCH_H
 
 #include "LinearMath/btScalar.h"
+#include "joeserialize.h"
 #include "macros.h"
+
+#include <iostream>
 
 class CarClutch
 {
+friend class joeserialize::Serializer;
 private:
 	btScalar max_torque;
 
 	//variables
-	btScalar position;
+	btScalar clutch_position;
+	bool locked;
 
 	//for info only
 	btScalar last_torque;
@@ -41,17 +46,18 @@ public:
 	/// default constructor makes an S2000-like car
 	CarClutch() :
 		max_torque(0),
-		position(0),
+		clutch_position(0),
+		locked(false),
 		last_torque(0),
 		engine_speed(0),
 		drive_speed(0)
 	{}
 
-	template <class Stream>
-	void DebugPrint(Stream & out) const
+	void DebugPrint(std::ostream & out) const
 	{
 		out << "---Clutch---" << "\n";
-		out << "Position: " << position << "\n";
+		out << "Clutch position: " << clutch_position << "\n";
+		out << "Locked: " << locked << "\n";
 		out << "Torque: " << last_torque << "\n";
 		out << "Engine speed: " << engine_speed << "\n";
 		out << "Drive speed: " << drive_speed << "\n";
@@ -64,12 +70,12 @@ public:
 
 	void SetPosition(btScalar value)
 	{
-		position = value;
+		clutch_position = value;
 	}
 
 	btScalar GetPosition() const
 	{
-		return position;
+		return clutch_position;
 	}
 
 	btScalar GetMaxTorque() const
@@ -81,21 +87,29 @@ public:
 	{
 		engine_speed = n_engine_speed;
 		drive_speed = n_drive_speed;
+		locked = true;
 
 		btScalar new_speed_diff = drive_speed - engine_speed;
-		btScalar torque_limit = position * max_torque;
+		btScalar torque_limit = clutch_position * max_torque;
 		btScalar friction_torque = torque_limit * new_speed_diff;	// highly viscous coupling (locked clutch)
 		if (friction_torque > torque_limit)							// slipping clutch
 		{
 			friction_torque = torque_limit;
+			locked = false;
 		}
 		else if (friction_torque < -torque_limit)
 		{
 			friction_torque = -torque_limit;
+			locked = false;
 		}
 
 		last_torque = friction_torque;
 		return friction_torque;
+	}
+
+	bool IsLocked() const
+	{
+		return locked;
 	}
 
 	btScalar GetLastTorque() const
@@ -103,10 +117,10 @@ public:
 		return last_torque;
 	}
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
-		_SERIALIZE_(s, position);
+		_SERIALIZE_(s, clutch_position);
+		_SERIALIZE_(s, locked);
 		return true;
 	}
 };

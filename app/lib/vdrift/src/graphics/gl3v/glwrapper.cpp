@@ -45,8 +45,7 @@ GLWrapper::GLWrapper(VertexBuffer & vb) :
 	infoOutput(NULL),
 	errorOutput(NULL),
 	initialized(false),
-	logEnable(false),
-	curActiveTexture(0)
+	logEnable(false)
 {
 	clearCaches();
 }
@@ -215,8 +214,8 @@ bool GLWrapper::linkShaderProgram(const std::vector <std::string> & shaderAttrib
 			GLLOG(glBindAttribLocation(handle, i, shaderAttributeBindings[i].c_str()));ERROR_CHECK;
 
 	// Make sure color outputs are bound to the proper names.
-	for (const auto & location : fragDataLocations)
-		GLLOG(glBindFragDataLocation(handle, location.first, location.second.c_str()));ERROR_CHECK;
+	for (std::map <GLuint, std::string>::const_iterator i = fragDataLocations.begin(); i != fragDataLocations.end(); i++)
+		GLLOG(glBindFragDataLocation(handle, i->first, i->second.c_str()));ERROR_CHECK;
 
 	// Attempt to link the program.
 	GLLOG(glLinkProgram(handle));ERROR_CHECK;
@@ -371,60 +370,19 @@ void GLWrapper::Hint(GLenum param0, GLenum param1)
 
 void GLWrapper::BlendEquationSeparate(GLenum param0, GLenum param1)
 {
-	blend_equation_rgb = param0;
-	blend_equation_alpha = param1;
 	GLLOG(glBlendEquationSeparate(param0,param1));ERROR_CHECK;
-}
-
-void GLWrapper::BlendEquationSeparateColor(GLenum param)
-{
-	blend_equation_rgb = param;
-	BlendEquationSeparate(blend_equation_rgb, blend_equation_alpha);
-}
-
-void GLWrapper::BlendEquationSeparateAlpha(GLenum param)
-{
-	blend_equation_alpha = param;
-	BlendEquationSeparate(blend_equation_rgb, blend_equation_alpha);
 }
 
 void GLWrapper::BlendFuncSeparate(GLenum param0, GLenum param1, GLenum param2, GLenum param3)
 {
-	blend_src_rgb = param0;
-	blend_dst_rgb = param1;
-	blend_src_alpha = param2;
-	blend_dst_alpha = param3;
 	GLLOG(glBlendFuncSeparate(param0, param1, param2, param3));ERROR_CHECK;
-}
-
-void GLWrapper::BlendFuncSeparateSrcColor(GLenum param)
-{
-	blend_src_rgb = param;
-	BlendFuncSeparate(blend_src_rgb, blend_dst_rgb, blend_src_alpha, blend_dst_alpha);
-}
-
-void GLWrapper::BlendFuncSeparateSrcAlpha(GLenum param)
-{
-	blend_src_alpha = param;
-	BlendFuncSeparate(blend_src_rgb, blend_dst_rgb, blend_src_alpha, blend_dst_alpha);
-}
-
-void GLWrapper::BlendFuncSeparateDstColor(GLenum param)
-{
-	blend_dst_rgb = param;
-	BlendFuncSeparate(blend_src_rgb, blend_dst_rgb, blend_src_alpha, blend_dst_alpha);
-}
-
-void GLWrapper::BlendFuncSeparateDstAlpha(GLenum param)
-{
-	blend_dst_alpha = param;
-	BlendFuncSeparate(blend_src_rgb, blend_dst_rgb, blend_src_alpha, blend_dst_alpha);
 }
 
 void GLWrapper::BindTexture(GLenum target, GLuint handle)
 {
 	// Only cache 2D textures at the moment, so if it's not 2D, then just send it and return.
-	if (target != GL_TEXTURE_2D)
+	// If we don't know what TU is active, then we can't do cache either.
+	if (target != GL_TEXTURE_2D || curActiveTexture == UINT_MAX)
 	{
 		GLLOG(glBindTexture(target,handle));ERROR_CHECK;
 		return;
@@ -445,37 +403,6 @@ void GLWrapper::BindTexture(GLenum target, GLuint handle)
 
 	if (send)
 	{
-		GLLOG(glBindTexture(target,handle));ERROR_CHECK;
-		boundTextures[curActiveTexture] = handle;
-	}
-}
-
-void GLWrapper::BindTexture(unsigned int tu, GLenum target, GLuint handle)
-{
-	// Only cache 2D textures at the moment, so if it's not 2D, then just send it and return.
-	if (target != GL_TEXTURE_2D)
-	{
-		ActiveTexture(tu);
-		GLLOG(glBindTexture(target,handle));ERROR_CHECK;
-		return;
-	}
-
-	// Check the cache.
-	bool send = false;
-	if (tu < boundTextures.size())
-	{
-		if (boundTextures[tu] != handle)
-			send = true;
-	}
-	else
-	{
-		boundTextures.resize(tu+1,0);
-		send = true;
-	}
-
-	if (send)
-	{
-		ActiveTexture(tu);
 		GLLOG(glBindTexture(target,handle));ERROR_CHECK;
 		boundTextures[curActiveTexture] = handle;
 	}
@@ -715,7 +642,7 @@ void GLWrapper::ClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 
 void GLWrapper::ClearDepth(GLfloat d)
 {
-	GLLOG(glClearDepth(GLclampd(d)));ERROR_CHECK;
+	GLLOG(glClearDepth(d));ERROR_CHECK;
 }
 
 void GLWrapper::ClearStencil(GLint s)
@@ -747,18 +674,10 @@ void GLWrapper::logging(bool log)
 
 void GLWrapper::clearCaches()
 {
-	ActiveTexture(0);
-
+	curActiveTexture = UINT_MAX;
 	boundTextures.clear();
 	cachedUniformFloats.clear();
 	cachedUniformInts.clear();
-
-	blend_equation_rgb = GL_FUNC_ADD;
-	blend_equation_alpha = GL_FUNC_ADD;
-	blend_src_rgb = GL_ONE;
-	blend_dst_rgb = GL_ZERO;
-	blend_src_alpha = GL_ONE;
-	blend_dst_alpha = GL_ZERO;
 }
 
 template <typename T>

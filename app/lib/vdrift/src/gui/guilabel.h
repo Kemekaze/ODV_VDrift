@@ -38,11 +38,12 @@ public:
 		SceneNode & scene,
 		const Font & font, int align,
 		float scalex, float scaley,
-		float xywh[4], float z);
-
-	bool GetProperty(const std::string & name, Slot1<const std::string &> *& slot);
+		float centerx, float centery,
+		float w, float h, float z);
 
 	void SetText(const std::string & text);
+
+	const std::string & GetText() const;
 
 	Slot1<const std::string &> set_value;
 

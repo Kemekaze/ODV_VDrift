@@ -17,17 +17,11 @@
 /*                                                                      */
 /************************************************************************/
 
-#ifndef _GUI_SLIDER_H
-#define _GUI_SLIDER_H
+#ifndef _GUISLIDER_H
+#define _GUISLIDER_H
 
 #include "guiwidget.h"
-#include "graphics/scenenode.h"
-#include "graphics/vertexarray.h"
-#include <memory>
-
-// gui slider base class
-
-class Texture;
+#include "sprite2d.h"
 
 class GuiSlider : public GuiWidget
 {
@@ -36,32 +30,25 @@ public:
 
 	~GuiSlider();
 
-	Slot1<const std::string &> set_value;
-	Slot1<const std::string &> set_min_value;
-	Slot1<const std::string &> set_max_value;
+	virtual void Update(SceneNode & scene, float dt);
 
-protected:
-	std::shared_ptr<Texture> m_texture;
-	SceneNode::DrawableHandle m_draw;
-	VertexArray m_varray;
-	float m_x, m_y, m_w, m_h;
-	float m_min_value, m_max_value;  // relative slider element extents
+	void SetupDrawable(
+		SceneNode & scene,
+		std::tr1::shared_ptr<Texture> texture,
+		float centerx, float centery,
+		float w, float h, float z, bool fill,
+  		std::ostream & error_output);
+
+	Slot1<const std::string &> set_value;
+
+private:
+	Sprite2D m_slider;
+	float m_value, m_x, m_y, m_w, m_h;
+	bool m_fill;
 
 	void SetValue(const std::string & value);
-
-	void SetMinValue(const std::string & value);
-
-	void SetMaxValue(const std::string & value);
-
+	Drawable & GetDrawable(SceneNode & scene);
 	GuiSlider(const GuiSlider & other);
-
-	Drawable & GetDrawable(SceneNode & node);
-
-	void InitDrawable(
-		SceneNode & node,
-		const std::shared_ptr<Texture> & texture,
-		float xywh[4],
-		float z);
 };
 
 #endif

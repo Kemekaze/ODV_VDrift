@@ -41,8 +41,8 @@ class DELAY
 
 		void Clear(float clearvalue)
 		{
-			for (auto & state : oldstate)
-				state = clearvalue;
+			for (int i = 0; i < (int)oldstate.size(); i++)
+				oldstate[i] = clearvalue;
 
 			index = 0;
 		}

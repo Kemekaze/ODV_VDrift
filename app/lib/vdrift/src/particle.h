@@ -24,8 +24,8 @@
 #include "graphics/vertexarray.h"
 #include "mathvector.h"
 #include "quaternion.h"
+#include "memory.h"
 
-#include <memory>
 #include <string>
 #include <utility> // std::pair
 #include <vector>
@@ -105,7 +105,7 @@ private:
 	Vec3 direction;
 
 	SceneNode::DrawableHandle draw;
-	std::shared_ptr<Texture> texture;
+	std::tr1::shared_ptr<Texture> texture;
 	VertexArray varray;
 	SceneNode node;
 

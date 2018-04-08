@@ -40,9 +40,10 @@ class CarTelemetry
 			{
 				f << "plot ";
 				unsigned int count = 0;
-				for (const auto & nv : variable_names)
+				for (std::vector <std::pair <std::string, T> >::iterator i =
+					variable_names.begin(); i != variable_names.end(); ++i)
 				{
-					f << "\\" << std::endl << "\"" << filename+".dat" << "\" u 1:" << count+2 << " t '" << nv.first << "' w lines";
+					f << "\\" << std::endl << "\"" << filename+".dat" << "\" u 1:" << count+2 << " t '" << i->first << "' w lines";
 					if (count < variable_names.size()-1)
 						f << ",";
 					f << " ";
@@ -60,11 +61,12 @@ class CarTelemetry
 		void AddRecord(const std::string & name, T value)
 		{
 			bool found = false;
-			for (auto & nv : variable_names)
+			for (std::vector <std::pair <std::string, T> >::iterator i =
+				variable_names.begin(); i != variable_names.end(); ++i)
 			{
-				if (name == nv.first)
+				if (name == i->first)
 				{
-					nv.second = value;
+					i->second = value;
 					found = true;
 					break;
 				}
@@ -82,8 +84,9 @@ class CarTelemetry
 			if (file)
 			{
 				file << time << " ";
-				for (const auto & nv : variable_names)
-					file << nv.second << " ";
+				for (std::vector <std::pair <std::string, T> >::iterator i =
+					variable_names.begin(); i != variable_names.end(); ++i)
+					file << i->second << " ";
 				file << "\n";
 			}
 		}

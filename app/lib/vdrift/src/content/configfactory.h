@@ -42,17 +42,17 @@ public:
 
 	template <class P>
 	bool create(
-		std::shared_ptr<PTree> & sptr,
+		std::tr1::shared_ptr<PTree> & sptr,
 		std::ostream & error,
 		const std::string & basepath,
 		const std::string & path,
 		const std::string & name,
 		const P & param);
 
-	const std::shared_ptr<PTree> & getDefault() const;
+	const std::tr1::shared_ptr<PTree> & getDefault() const;
 
 private:
-	std::shared_ptr<PTree> m_default;
+	std::tr1::shared_ptr<PTree> m_default;
 	void (*m_read)(std::istream &, PTree &, Include *);
 	void (*m_write)(const PTree &, std::ostream &);
 	ContentManager * m_content;

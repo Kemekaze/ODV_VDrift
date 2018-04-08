@@ -20,12 +20,15 @@
 #ifndef _DYNAMICSWORLD_H
 #define _DYNAMICSWORLD_H
 
-#include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+#include "btBulletCollisionCommon.h"
+#include "btBulletDynamicsCommon.h"
+
+#include <iosfwd>
 
 class Track;
 class CollisionContact;
 class FractureBody;
-class RoadPatch;
+class Bezier;
 
 class DynamicsWorld  : public btDiscreteDynamicsWorld
 {
@@ -48,7 +51,7 @@ public:
 	// set custon contact callback
 	void setContactAddedCallback(ContactAddedCallback cb);
 
-	const RoadPatch * GetSectorPatch(int i);
+	const Bezier* GetSectorPatch(int i);
 
 	// cast ray into collision world, returns first hit, caster is excluded fom hits
 	bool castRay(
@@ -61,6 +64,8 @@ public:
 	void update(btScalar dt);
 
 	void draw();
+
+	void debugPrint(std::ostream & out) const;
 
 protected:
 	struct ActiveCon

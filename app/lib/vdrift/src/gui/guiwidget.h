@@ -36,15 +36,16 @@ public:
 	/// update widget state
 	virtual void Update(SceneNode & scene, float dt);
 
-	/// scale widget alpha (opacity) [0, 1]
+	/// scale widget alpha [0, 1]
 	virtual void SetAlpha(SceneNode & scene, float value);
+
+	/// override visibility
+	virtual void SetVisible(SceneNode & scene, bool value);
 
 	/// todo: need to ge rid of this one
 	virtual Drawable & GetDrawable(SceneNode & scene) = 0;
 
 	/// properties
-	virtual bool GetProperty(const std::string & name, Slot1<const std::string &> *& slot);
-
 	void SetHSV(float h, float s, float v);
 	void SetRGB(float r, float g, float b);
 	void SetOpacity(float value);
@@ -52,24 +53,21 @@ public:
 	void SetSat(float value);
 	void SetVal(float value);
 
-	void SetVisible(const std::string & value);
-	void SetOpacity(const std::string & value);
 	void SetColor(const std::string & value);
+	void SetOpacity(const std::string & value);
 	void SetHue(const std::string & value);
 	void SetSat(const std::string & value);
 	void SetVal(const std::string & value);
 
-	Slot1<const std::string &> set_visible;
-	Slot1<const std::string &> set_opacity;
 	Slot1<const std::string &> set_color;
+	Slot1<const std::string &> set_opacity;
 	Slot1<const std::string &> set_hue;
 	Slot1<const std::string &> set_sat;
 	Slot1<const std::string &> set_val;
 
 protected:
-	float m_rgb[3];
-	float m_hsv[3];
-	float m_alpha;
+	float m_r, m_g, m_b, m_a;	// color and alpha
+	float m_h, m_s, m_v;		// hue, sat, val cache
 	bool m_visible;
 	bool m_update;
 

@@ -23,24 +23,19 @@
 #include "physics/tracksurface.h"
 #include "content/contentmanager.h"
 #include "cfg/ptree.h"
-#include "joeserialize.h"
-
-#include "BulletCollision/CollisionDispatch/btCollisionObject.h"
-#include "BulletCollision/CollisionShapes/btStaticPlaneShape.h"
 
 #include <vector>
 #include <iostream>
 #include <sstream>
-#include <ctime>
 
 static inline float ConvertToMPH(float ms)
 {
-	return ms * 2.23693629f;
+	return ms * 2.23693629;
 }
 
 static inline float ConvertToFeet(float meters)
 {
-	return meters * 3.2808399f;
+	return meters * 3.2808399;
 }
 
 PerformanceTesting::PerformanceTesting(DynamicsWorld & world) :
@@ -91,7 +86,7 @@ void PerformanceTesting::Test(
 	world.addCollisionObject(track);
 
 	//load the car dynamics
-	std::shared_ptr<PTree> cfg;
+	std::tr1::shared_ptr<PTree> cfg;
 	content.load(cfg, cardir, carname + ".car");
 	if (!cfg->size())
 	{
@@ -108,11 +103,10 @@ void PerformanceTesting::Test(
 		return;
 	}
 
-	btVector3 cm = -car.GetCenterOfMassOffset();
-	info_output << carname << " Summary:\n"
-		<< "Mass including driver and fuel: " << 1 / car.GetInvMass() << " kg\n"
-		<< "Center of mass: " << cm[0] << ", " << cm[1] << ", " << cm[2] << " m\n"
-		<< "Estimated top speed: " << ConvertToMPH(car.GetMaxSpeedMPS()) << " MPH" << std::endl;
+	info_output << "Car dynamics loaded" << std::endl;
+	info_output << carname << " Summary:\n" <<
+			"Mass (kg) including driver and fuel: " << 1 / car.GetInvMass() << "\n" <<
+			"Center of mass (m): " << car.GetCenterOfMass() << std::endl;
 
 	std::ostringstream statestream;
 	joeserialize::BinaryOutputSerializer serialize_output(statestream);
@@ -145,41 +139,41 @@ void PerformanceTesting::ResetCar()
 	carinput.resize(CarInput::INVALID, 0.0f);
 	carinput[CarInput::THROTTLE] = 1.0f;
 	carinput[CarInput::BRAKE] = 1.0f;
-	carinput[CarInput::CLUTCH] = 1.0f;
 }
 
 void PerformanceTesting::TestMaxSpeed(std::ostream & info_output, std::ostream & error_output)
 {
-	info_output << "Testing top speed" << std::endl;
+	info_output << "Testing maximum speed" << std::endl;
 
-	float maxtime = 300;
-	float t = 0.;
-	float dt = 1/90.0;
+	double maxtime = 300.0;
+	double t = 0.;
+	double dt = 1/90.0;
 	int i = 0;
 
-	std::pair <float, float> maxspeed(0, 0);
-	float maxlift = 0;
-	float maxdrag = 0;
+	std::pair <float, float> maxspeed;
+	maxspeed.first = 0;
+	maxspeed.second = 0;
 	float lastsecondspeed = 0;
 	float stopthreshold = 0.001; //if the accel (in m/s^2) is less than this value, discontinue the testing
 
 	float timeto60start = 0; //don't start the 0-60 clock until the car is moving at a threshold speed to account for the crappy launch that the autoclutch gives
-	float timeto60startthreshold = 1; //threshold speed to start 0-60 clock in m/s
+	float timeto60startthreshold = 2.23; //threshold speed to start 0-60 clock in m/s
+	//float timeto60startthreshold = 0.01; //threshold speed to start 0-60 clock in m/s
 	float timeto60 = maxtime;
 
 	float timetoquarter = maxtime;
 	float quarterspeed = 0;
 
+	std::string downforcestr = "N/A";
+
 	ResetCar();
 
-	clock_t cpu_timer_start = clock();
 	while (t < maxtime)
 	{
 		if (car.GetTransmission().GetGear() == 1 &&
-			car.GetEngine().GetRPM() > 0.8f * car.GetEngine().GetRedline())
+			car.GetEngine().GetRPM() > 0.8 * car.GetEngine().GetRedline())
 		{
-			carinput[CarInput::BRAKE] = 0;
-			carinput[CarInput::CLUTCH] = 0;
+			carinput[CarInput::BRAKE] = 0.0f;
 		}
 
 		car.Update(carinput);
@@ -187,40 +181,44 @@ void PerformanceTesting::TestMaxSpeed(std::ostream & info_output, std::ostream &
 		world.update(dt);
 
 		float car_speed = car.GetSpeed();
+
 		if (car_speed > maxspeed.second)
 		{
 			maxspeed.first = t;
-			maxspeed.second = car_speed;
-			maxlift = car.GetTotalAero()[2];
-			maxdrag = car.GetTotalAero()[1];
+			maxspeed.second = car.GetSpeed();
+			std::ostringstream dfs;
+			dfs << -car.GetTotalAero()[2] << " N; " << -car.GetTotalAero()[2]/car.GetTotalAero()[0] << ":1 lift/drag";
+			downforcestr = dfs.str();
 		}
 
 		if (car_speed < timeto60startthreshold)
 			timeto60start = t;
 
-		if (car_speed < 26.8224f)
+		if (car_speed < 26.8224)
 			timeto60 = t;
 
-		if (car.GetCenterOfMass().length() > 402.3f && timetoquarter == maxtime)
+		if (car.GetCenterOfMass().length() > 402.3 && timetoquarter == maxtime)
 		{
 			//quarter mile!
 			timetoquarter = t - timeto60start;
 			quarterspeed = car_speed;
 		}
 
-		if (i % (int)(1/dt) == 0) //every second
+		if (i % (int)(1.0/dt) == 0) //every second
 		{
-			if (car_speed - lastsecondspeed < stopthreshold && car_speed > 26)
+			if (1)
 			{
-				//info_output << "Maximum speed attained at " << maxspeed.first << " s" << std::endl;
-				break;
+				if (car_speed - lastsecondspeed < stopthreshold && car_speed > 26.0)
+				{
+					//info_output << "Maximum speed attained at " << maxspeed.first << " s" << std::endl;
+					break;
+				}
+				if (!car.GetEngine().GetCombustion())
+				{
+					error_output << "Car stalled during launch, t=" << t << std::endl;
+					break;
+				}
 			}
-
-			if (t > 0 && !car.GetEngine().GetCombustion())
-			{
-				error_output << "Car stalled during launch, t=" << t << std::endl;
-			}
-
 			lastsecondspeed = car_speed;
 			//std::cout << t << ", " << car_speed << ", " << car.GetGear() << ", " << car.GetEngineRPM() << std::endl;
 		}
@@ -228,34 +226,25 @@ void PerformanceTesting::TestMaxSpeed(std::ostream & info_output, std::ostream &
 		t += dt;
 		i++;
 	}
-	clock_t cpu_timer_stop = clock();
-	clock_t clock_ticks = cpu_timer_stop - cpu_timer_start;
-	float sim_perf = (clock_ticks > 0) ? t / clock_ticks * CLOCKS_PER_SEC : 0;
 
-	info_output << "Top speed: " << ConvertToMPH(maxspeed.second) << " MPH at " << maxspeed.first << " s\n";
-	info_output << "Downforce at top speed: " << -maxlift << " N\n";
-	info_output << "Drag at top speed: " << -maxdrag << " N\n";
-	info_output << "0-60 MPH time: " << timeto60 - timeto60start << " s\n";
-	info_output << "1/4 mile time: " << timetoquarter << " s at " << ConvertToMPH(quarterspeed) << " MPH" << std::endl;
-	info_output << "Simulation performance: " << sim_perf << std::endl;
+	info_output << "Maximum speed: " << ConvertToMPH(maxspeed.second) << " MPH at " << maxspeed.first << " s" << std::endl;
+	info_output << "Downforce at maximum speed: " << downforcestr << std::endl;
+	info_output << "0-60 MPH time: " << timeto60-timeto60start << " s" << std::endl;
+	info_output << "1/4 mile time: " << timetoquarter << " s" << " at " << ConvertToMPH(quarterspeed) << " MPH" << std::endl;
 }
 
 void PerformanceTesting::TestStoppingDistance(bool abs, std::ostream & info_output, std::ostream & error_output)
 {
 	info_output << "Testing stopping distance" << std::endl;
 
-	float maxtime = 300;
-	float t = 0.;
-	float dt = 1/90.0;
+	double maxtime = 300.0;
+	double t = 0.;
+	double dt = 1/90.0;
 	int i = 0;
 
 	float stopthreshold = 0.1; //if the speed (in m/s) is less than this value, discontinue the testing
 	btVector3 stopstart; //where the stopping starts
 	float brakestartspeed = 26.82; //speed at which to start braking, in m/s (26.82 m/s is 60 mph)
-
-	// wheel lockup speeds during braking
-	float front_lockup_speed = 0.0f;
-	float rear_lockup_speed = 0.0f;
 
 	bool accelerating = true; //switches to false once 60 mph is reached
 
@@ -265,11 +254,15 @@ void PerformanceTesting::TestStoppingDistance(bool abs, std::ostream & info_outp
 
 	while (t < maxtime)
 	{
-		if (accelerating && car.GetTransmission().GetGear() == 1 &&
-			car.GetEngine().GetRPM() > 0.8f * car.GetEngine().GetRedline())
+		if (accelerating)
 		{
-			carinput[CarInput::BRAKE] = 0;
-			carinput[CarInput::CLUTCH] = 0;
+			carinput[CarInput::THROTTLE] = 1.0f;
+			carinput[CarInput::BRAKE] = 0.0f;
+		}
+		else
+		{
+			carinput[CarInput::THROTTLE] = 0.0f;
+			carinput[CarInput::BRAKE] = 1.0f;
 		}
 
 		car.Update(carinput);
@@ -280,13 +273,9 @@ void PerformanceTesting::TestStoppingDistance(bool abs, std::ostream & info_outp
 
 		if (car_speed >= brakestartspeed && accelerating) //stop accelerating and hit the brakes
 		{
-			stopstart = car.GetWheelPosition(WheelPosition(0));
-
-			carinput[CarInput::THROTTLE] = 0;
-			carinput[CarInput::BRAKE] = 1;
 			accelerating = false;
-
-			//info_output << "hitting the brakes at " << t << ", " << car_speed << std::endl;
+			stopstart = car.GetWheelPosition(WheelPosition(0));
+			//std::cout << "hitting the brakes at " << t << ", " << car_speed << std::endl;
 		}
 
 		if (!accelerating && car_speed < stopthreshold)
@@ -294,30 +283,15 @@ void PerformanceTesting::TestStoppingDistance(bool abs, std::ostream & info_outp
 			break;
 		}
 
-		if (!accelerating)
-		{
-			if (!(front_lockup_speed > 0) && car.GetWheel(WheelPosition(0)).GetRPM() < 0.001f)
-			{
-				front_lockup_speed = car_speed;
-			}
-			if (!(rear_lockup_speed > 0) && car.GetWheel(WheelPosition(3)).GetRPM() < 0.001f)
-			{
-				rear_lockup_speed = car_speed;
-			}
-		}
-
-		if (t > 0 && !car.GetEngine().GetCombustion())
+		if (!car.GetEngine().GetCombustion())
 		{
 			error_output << "Car stalled during launch, t=" << t << std::endl;
+			break;
 		}
 
-		if (i % (int)(1/dt) == 0) //every second
+		if (i % (int)(1.0/dt) == 0) //every second
 		{
-			//info_output << t
-			//	<< ", " << car_speed
-			//	<< ", " << car.GetWheel(WheelPosition(0)).GetAngularVelocity()
-			//	<< ", " << car.GetBrake(WheelPosition(0)).GetBrakeFactor()
-			//	<< std::endl;
+			//std::cout << t << ", " << car.dynamics.GetSpeed() << ", " << car.GetGear() << ", " << car.GetEngineRPM() << std::endl;
 		}
 
 		t += dt;
@@ -331,7 +305,5 @@ void PerformanceTesting::TestStoppingDistance(bool abs, std::ostream & info_outp
 		info_output << "(ABS)";
 	else
 		info_output << "(no ABS)";
-	info_output << ": " << ConvertToFeet((stopend-stopstart).length()) << " ft\n"
-		<< "Wheel lockup speed " << ConvertToMPH(front_lockup_speed)
-		<< ", " << ConvertToMPH(rear_lockup_speed) << std::endl;
+	info_output << ": " << ConvertToFeet((stopend-stopstart).length()) << " ft" << std::endl;
 }

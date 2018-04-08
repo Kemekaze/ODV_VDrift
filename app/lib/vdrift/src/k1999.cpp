@@ -256,7 +256,7 @@ void K1999::CalcRaceLine()
 	//
 	for (int Step = stepsize; (Step /= 2) > 0;)
 	{
-		for (int i = Iterations * int(std::sqrt(float(Step))); --i >= 0;)
+		for (int i = Iterations * int(sqrt(float(Step))); --i >= 0;)
 			Smooth(Step);
 		Interpolate(Step);
 	}
@@ -284,7 +284,7 @@ void K1999::CalcRaceLine()
 //VDrift specific functions below
 //
 
-void K1999::LoadData(const RoadStrip & road)
+bool K1999::LoadData(const RoadStrip & road)
 {
 	tx.clear();
 	ty.clear();
@@ -298,22 +298,14 @@ void K1999::LoadData(const RoadStrip & road)
 	const std::vector<RoadPatch> & patchlist = road.GetPatches();
 	Divs = patchlist.size();
 
-	tx.reserve(Divs);
-	ty.reserve(Divs);
-	tRInverse.reserve(Divs);
-	txLeft.reserve(Divs);
-	tyLeft.reserve(Divs);
-	txRight.reserve(Divs);
-	tyRight.reserve(Divs);
-	tLane.reserve(Divs);
-
 	int count = 0;
-	for (const auto & p : patchlist)
+
+	for (std::vector<RoadPatch>::const_iterator i = patchlist.begin(); i != patchlist.end(); ++i)
 	{
-		txLeft.push_back(p.GetPoint(3,0)[1]);
-		tyLeft.push_back(-p.GetPoint(3,0)[0]);
-		txRight.push_back(p.GetPoint(3,3)[1]);
-		tyRight.push_back(-p.GetPoint(3,3)[0]);
+		txLeft.push_back(i->GetPatch().GetPoint(3,0)[1]);
+		tyLeft.push_back(-i->GetPatch().GetPoint(3,0)[0]);
+		txRight.push_back(i->GetPatch().GetPoint(3,3)[1]);
+		tyRight.push_back(-i->GetPatch().GetPoint(3,3)[0]);
 		tLane.push_back(0.5);
 		tx.push_back(0.0);
 		ty.push_back(0.0);
@@ -322,6 +314,11 @@ void K1999::LoadData(const RoadStrip & road)
 
 		count++;
 	}
+
+	if (road.GetClosed()) //a closed circuit
+		return true;
+	else
+		return false;
 }
 
 void K1999::UpdateRoadStrip(RoadStrip & road)
@@ -329,11 +326,12 @@ void K1999::UpdateRoadStrip(RoadStrip & road)
 	std::vector<RoadPatch> & patchlist = road.GetPatches();
 	int count = 0;
 
-	for (auto & p : patchlist)
+	for (std::vector<RoadPatch>::iterator i = patchlist.begin(); i != patchlist.end(); ++i)
 	{
-		auto point = p.GetPoint(3,0)*(1.0-tLane[count]) + p.GetPoint(3,3)*(tLane[count]);
-		p.SetRacingLine(point, tRInverse[count]);
-		//std::cout << point << std::endl;
+		i->SetTrackCurvature(tRInverse[count]);
+		i->SetRacingLine(i->GetPatch().GetPoint(3,0)*(1.0-tLane[count]) + i->GetPatch().GetPoint(3,3)*(tLane[count]));
+		//std::cout << i->GetPatch().GetPoint(3,0)*(1.0-tLane[count]) + i->GetPatch().GetPoint(3,3)*(tLane[count]) << std::endl;
+
 		count++;
 	}
 

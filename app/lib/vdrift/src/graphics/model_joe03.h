@@ -51,6 +51,7 @@ public:
 
 	static const unsigned int JOE_MAX_FACES;
 	static const unsigned int JOE_VERSION;
+	static const float MODEL_SCALE;
 
 private:
 	// This reads in the data from the MD2 file and stores it in the member variable

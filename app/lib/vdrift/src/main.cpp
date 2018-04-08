@@ -68,6 +68,8 @@ int main (int argc, char * argv[])
 
 	// Start the real game.
 	list <string> args(argv, argv + argc);
+  for (list<string>::iterator i = args.begin(); i != args.end(); ++i)
+    std::cout << i->c_str() << endl;
 	game.Start(args);
 
 	info_output << "Exiting" << std::endl;

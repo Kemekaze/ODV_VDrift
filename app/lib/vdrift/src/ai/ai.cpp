@@ -25,7 +25,7 @@
 
 const std::string Ai::default_type = "aistd";
 
-Ai::Ai()
+Ai::Ai() : empty_input(CarInput::INVALID, 0.0)
 {
 	AddFactory("aistd", new AiCarStandardFactory());
 	AddFactory("aiexp", new AiCarExperimentalFactory());
@@ -35,45 +35,71 @@ Ai::~Ai()
 {
 	Ai::ClearCars();
 
-	for (auto & factory : ai_factories)
+	std::map <std::string, AiFactory*>::iterator it;
+	for (it = ai_factories.begin(); it != ai_factories.end(); it++)
 	{
-		delete factory.second;
+		delete it->second;
 	}
 	ai_factories.clear();
 }
 
-unsigned Ai::AddCar(unsigned carid, float difficulty, const std::string & type)
+void Ai::AddCar(const CarDynamics * car, float difficulty, const std::string & type)
 {
-	auto it = ai_factories.find(type);
+	assert(car);
+	assert(ai_factories.size() > 0);
+
+	std::map <std::string, AiFactory*>::iterator it = ai_factories.find(type);
 	assert(it != ai_factories.end());
 	AiFactory * factory = it->second;
-
-	AiCar * aicar = factory->Create(carid, difficulty);
+	AiCar * aicar = factory->Create(car, difficulty);
 	ai_cars.push_back(aicar);
+}
 
-	return ai_cars.size() - 1;
+void Ai::RemoveCar(const CarDynamics * car)
+{
+	assert(car);
+
+	for (size_t i = 0; i < ai_cars.size(); i++)
+	{
+		if(ai_cars[i]->GetCar() == car)
+		{
+			delete ai_cars[i];
+			ai_cars.erase(ai_cars.begin() + i);
+			return;
+		}
+	}
 }
 
 void Ai::ClearCars()
 {
-	for (auto ai_car : ai_cars)
+	int size = ai_cars.size();
+	for (int i = 0; i < size; i++)
 	{
-		delete ai_car;
+		delete ai_cars[i];
 	}
 	ai_cars.clear();
 }
 
 void Ai::Update(float dt, const CarDynamics cars[], const int cars_num)
 {
-	for (auto ai_car : ai_cars)
+	int size = ai_cars.size();
+	for (int i = 0; i < size; i++)
 	{
-		ai_car->Update(dt, cars, cars_num);
+		ai_cars[i]->Update(dt, cars, cars_num);
 	}
 }
 
-const std::vector<float> & Ai::GetInputs(unsigned id) const
+const std::vector<float> & Ai::GetInputs(const CarDynamics * car) const
 {
-	return ai_cars[id]->GetInputs();
+	int size = ai_cars.size();
+	for (int i = 0; i < size; i++)
+	{
+		if (car == ai_cars[i]->GetCar())
+		{
+			return ai_cars[i]->GetInputs();
+		}
+	}
+	return empty_input;
 }
 
 void Ai::AddFactory(const std::string & type_name, AiFactory * factory)
@@ -84,9 +110,10 @@ void Ai::AddFactory(const std::string & type_name, AiFactory * factory)
 std::vector<std::string> Ai::ListFactoryTypes()
 {
 	std::vector<std::string> ret;
-	for (const auto & factory : ai_factories)
+	std::map<std::string, AiFactory*>::iterator it;
+	for (it = ai_factories.begin(); it != ai_factories.end(); it++)
 	{
-		ret.push_back(factory.first);
+		ret.push_back(it->first);
 	}
 	return ret;
 }
@@ -94,9 +121,10 @@ std::vector<std::string> Ai::ListFactoryTypes()
 void Ai::Visualize()
 {
 #ifdef VISUALIZE_AI_DEBUG
-	for (auto ai_car : ai_cars)
+	int size = ai_cars.size();
+	for (int i = 0; i < size; i++)
 	{
-		ai_car->Visualize();
+		ai_cars[i]->Visualize();
 	}
 #endif
 }

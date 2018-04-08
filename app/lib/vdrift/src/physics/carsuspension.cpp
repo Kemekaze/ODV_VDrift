@@ -21,10 +21,6 @@
 #include "coordinatesystem.h"
 #include "cfg/ptree.h"
 
-#include <iomanip> // std::setw
-
-static const btScalar deg2rad = M_PI / 180;
-
 CarSuspensionInfo::CarSuspensionInfo() :
 	spring_constant(50000.0),
 	anti_roll(8000),
@@ -37,8 +33,7 @@ CarSuspensionInfo::CarSuspensionInfo() :
 	ackermann(0),
 	camber(0),
 	caster(0),
-	toe(0),
-	inv_mass(0.05)
+	toe(0)
 {
 	// ctor
 }
@@ -55,8 +50,8 @@ CarSuspension::CarSuspension() :
 	overtravel(0),
 	displacement(0),
 	last_displacement(0),
-	wheel_force(0),
-	wheel_contact(0)
+	wheel_velocity(0),
+	wheel_force(0)
 {
 	// ctor
 }
@@ -65,90 +60,83 @@ void CarSuspension::Init(const CarSuspensionInfo & info)
 {
 	this->info = info;
 
-	btQuaternion toe(Direction::up, info.toe * deg2rad);
-	btQuaternion cam(Direction::forward, -info.camber * deg2rad);
+	btQuaternion toe(Direction::up, info.toe * M_PI / 180.0);
+	btQuaternion cam(Direction::forward, -info.camber * M_PI / 180.0);
 	orientation_ext = toe * cam;
 
-	steering_axis = Direction::up * btCos(-info.caster * deg2rad) +
-		Direction::right * btSin(-info.caster * deg2rad);
+	steering_axis = Direction::up * cos(-info.caster * M_PI / 180.0) +
+		Direction::right * sin(-info.caster * M_PI / 180.0);
 
 	position = info.position;
 
 	SetSteering(0.0);
 }
 
-btScalar CarSuspension::GetDisplacement(btScalar force) const
+void CarSuspension::SetSteering(const btScalar & value)
 {
-	// ignoring spring factors here, duh
-	return force / info.spring_constant;
-}
-
-void CarSuspension::SetSteering(btScalar value)
-{
-	btScalar alpha = -value * info.steering_angle * deg2rad;
-	steering_angle = 0;
-	if (alpha != 0)
+	btScalar alpha = -value * info.steering_angle * M_PI / 180.0;
+	steering_angle = 0.0;
+	if (alpha != 0.0)
 	{
-		steering_angle = std::atan(1 / (1 / std::tan(alpha) - std::tan(info.ackermann * deg2rad)));
+		steering_angle = atan(1.0 / (1.0 / tan(alpha) - tan(info.ackermann * M_PI / 180.0)));
 	}
 	btQuaternion steer(steering_axis, steering_angle);
 	orientation = steer * orientation_ext;
 }
 
-void CarSuspension::SetDisplacement(btScalar value)
+void CarSuspension::SetDisplacement ( const btScalar & value )
 {
 	last_displacement = displacement;
 	displacement = value;
-	overtravel = 0;
+
 	if (displacement > info.travel)
-	{
-		overtravel = displacement - info.travel;
 		displacement = info.travel;
-	}
-	else if (displacement < 0)
-	{
+	if (displacement < 0)
 		displacement = 0;
-		wheel_contact = 0;
-	}
+
+	overtravel = value - info.travel;
+	if (overtravel < 0)
+		overtravel = 0;
+
+	//enforce maximum compression velocity
+	/*if (displacement - last_displacement < -max_compression_velocity*dt)
+		displacement = last_displacement - max_compression_velocity*dt;
+	if (displacement - last_displacement > max_compression_velocity*dt)
+		displacement = last_displacement + max_compression_velocity*dt;*/
 
 	// update wheel position
 	position = GetWheelPosition(displacement / info.travel);
 }
 
-void CarSuspension::UpdateDisplacement(btScalar displacement_delta, btScalar dt)
+btScalar CarSuspension::GetForce ( btScalar dt )
 {
-	wheel_contact = 1;
-	if (displacement_delta < 0)
+	btScalar damping = info.bounce;
+	//note that displacement is defined opposite to the classical definition (positive values mean compressed instead of extended)
+	btScalar velocity = (displacement - last_displacement) / dt;
+	if (velocity < 0)
 	{
-		// simulate wheel rebound (ignoring relative chassis acceleration)
-		btScalar new_delta = -btScalar(0.5) * info.inv_mass * force * dt * dt;
-		btScalar old_delta = displacement - last_displacement;
-		if (old_delta < 0)
-			new_delta += old_delta;
-		if (new_delta > displacement_delta)
-		{
-			displacement_delta = new_delta;
-			wheel_contact = 0;
-		}
+		damping = info.rebound;
 	}
-	SetDisplacement(displacement + displacement_delta);
+
+	//compute damper factor based on curve
+	btScalar velabs = std::abs(velocity);
+	btScalar dampfactor = info.damper_factors.Interpolate(velabs);
+
+	//compute spring factor based on curve
+	btScalar springfactor = info.spring_factors.Interpolate(displacement);
+
+	spring_force = displacement * info.spring_constant * springfactor; //when compressed, the spring force will push the car in the positive z direction
+	damp_force = velocity * damping * dampfactor; //when compression is increasing, the damp force will push the car in the positive z direction
+	return spring_force + damp_force;
 }
 
-void CarSuspension::UpdateForces(btScalar roll_delta, btScalar dt)
+void CarSuspension::DebugPrint(std::ostream & out) const
 {
-	btScalar displacement_delta = displacement - last_displacement;
-	btScalar velocity = displacement_delta / dt;
-	btScalar damp_factor = info.damper_factors.Interpolate(btFabs(velocity));
-	btScalar damping_constant = (displacement_delta < 0) ? info.rebound : info.bounce;
-	damp_force = velocity * damping_constant * damp_factor;
-
-	btScalar spring_factor = info.spring_factors.Interpolate(displacement);
-	spring_force = displacement * info.spring_constant * spring_factor;
-
-	btScalar anti_roll_force = info.anti_roll * roll_delta;
-	force = spring_force + damp_force + anti_roll_force;
-
-	wheel_force = (force * wheel_contact > 0) ? force : 0;
+	out << "---Suspension---" << "\n";
+	out << "Displacement: " << displacement << "\n";
+	out << "Spring Force: " << spring_force << "\n";
+	out << "Damping Force: " << damp_force << "\n";
+	out << "Steering angle: " << steering_angle * 180 / M_PI << "\n";
 }
 
 class BasicSuspension : public CarSuspension
@@ -276,7 +264,7 @@ public:
 
 	}
 
-	virtual void SetSteering(btScalar value)
+	void SetSteering(const btScalar & value)
 	{
 		CarSuspension::SetSteering(value);
 		orientation = orientation * mountrot;
@@ -338,7 +326,7 @@ public:
 		strut.hinge.setValue(hinge[0], hinge[1], hinge[2]);
 	}
 
-	virtual void SetSteering(btScalar value)
+	void SetSteering(const btScalar & value)
 	{
 		CarSuspension::SetSteering(value);
 		orientation = orientation * mountrot;
@@ -393,7 +381,6 @@ static bool LoadCoilover(
 
 bool CarSuspension::Load(
 	const PTree & cfg_wheel,
-	btScalar wheel_mass,
 	CarSuspension *& suspension,
 	std::ostream & error_output)
 {
@@ -405,8 +392,8 @@ bool CarSuspension::Load(
 	if (!cfg_wheel.get("toe", info.toe, error_output)) return false;
 	cfg_wheel.get("steering", info.steering_angle);
 	cfg_wheel.get("ackermann", info.ackermann);
+
 	info.position.setValue(p[0], p[1], p[2]);
-	info.inv_mass = 1 / wheel_mass;
 
 	const PTree * cfg_coil;
 	if (!cfg_wheel.get("coilover", cfg_coil, error_output)) return false;

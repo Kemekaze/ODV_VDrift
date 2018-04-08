@@ -21,12 +21,14 @@
 #define _CARTRANSMISSION_H
 
 #include "LinearMath/btScalar.h"
+#include "joeserialize.h"
 #include "macros.h"
 
-#include <map>
+#include <iostream>
 
 class CarTransmission
 {
+friend class joeserialize::Serializer;
 public:
 	//default constructor makes an S2000-like car
 	CarTransmission() :
@@ -98,9 +100,8 @@ public:
 	btScalar GetGearRatio(int gear) const
 	{
 		btScalar ratio = 1.0;
-		const auto i = gear_ratios.find(gear);
-		if (i != gear_ratios.end())
-			ratio = i->second;
+		std::map<int, btScalar>::const_iterator i = gear_ratios.find(gear);
+		if (i != gear_ratios.end()) ratio = i->second;
 		return ratio;
 	}
 
@@ -118,8 +119,8 @@ public:
 	///get the rotational speed of the clutch given the rotational speed of the driveshaft
 	btScalar CalculateClutchSpeed(btScalar driveshaft_speed)
 	{
-		driveshaft_rpm = driveshaft_speed * btScalar(30 / M_PI);
-		crankshaft_rpm = driveshaft_speed * gear_ratios[gear] * btScalar(30 / M_PI);
+		driveshaft_rpm = driveshaft_speed * 30.0 / M_PI;
+		crankshaft_rpm = driveshaft_speed * gear_ratios[gear] * 30.0 / M_PI;
 		return driveshaft_speed * gear_ratios[gear];
 	}
 
@@ -131,8 +132,7 @@ public:
 		return driveshaft_speed * i->second;
 	}
 
-	template <class Stream>
-	void DebugPrint(Stream & out) const
+	void DebugPrint(std::ostream & out) const
 	{
 		out << "---Transmission---" << "\n";
 		//out << "Gear ratio: " << gear_ratios.at(gear) << "\n";
@@ -140,8 +140,7 @@ public:
 		out << "Driveshaft RPM: " << driveshaft_rpm << "\n";
 	}
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
 		_SERIALIZE_(s, gear);
 		return true;

@@ -28,28 +28,6 @@
 #include <iostream>
 #include <cassert>
 
-/// container slice wrapper
-
-template <typename Iter>
-struct Slice
-{
-	Slice(Iter abegin, Iter aend) : begin(abegin), end(aend) { }
-	Iter begin, end;
-};
-
-template <typename Iter>
-inline std::istream & operator>>(std::istream & stream, Slice<Iter> & out)
-{
-	for (Iter i = out.begin; i != out.end && !stream.eof(); ++i)
-	{
-		std::string str;
-		std::getline(stream, str, ',');
-		std::istringstream s(str);
-		s >> *i;
-	}
-	return stream;
-}
-
 /// see the user's guide at the bottom of the file
 class Config
 {
@@ -184,7 +162,7 @@ template <typename T>
 inline bool Config::get(const const_iterator & section, const std::string & param, T & output) const
 {
 	assert(section != sections.end());
-	auto i = section->second.find(param);
+	Section::const_iterator i = section->second.find(param);
 	if (i != section->second.end())
 	{
 		std::istringstream s(i->second);
@@ -198,7 +176,7 @@ template <typename T>
 inline bool Config::get(const const_iterator & section, const std::string & param, std::vector<T> & out) const
 {
 	assert(section != sections.end());
-	auto i = section->second.find(param);
+	Section::const_iterator i = section->second.find(param);
 	if (i != section->second.end())
 	{
 		std::istringstream st(i->second);
@@ -274,7 +252,7 @@ inline void Config::set(iterator section, const std::string & param, const std::
 	if (section != sections.end())
 	{
 		std::ostringstream s;
-		auto it = invar.begin();
+		typename std::vector<T>::const_iterator it = invar.begin();
 		while (it < invar.end() - 1)
 		{
 			s << *it++ << ",";
@@ -298,7 +276,7 @@ template <>
 inline bool Config::get(const const_iterator & section, const std::string & param, std::string & output) const
 {
 	assert(section != sections.end());
-	auto i = section->second.find(param);
+	Section::const_iterator i = section->second.find(param);
 	if (i != section->second.end())
 	{
 		output = i->second;
@@ -311,7 +289,7 @@ template <>
 inline bool Config::get(const const_iterator & section, const std::string & param, bool & output) const
 {
 	assert(section != sections.end());
-	auto i = section->second.find(param);
+	Section::const_iterator i = section->second.find(param);
 	if (i != section->second.end())
 	{
 		output = false;

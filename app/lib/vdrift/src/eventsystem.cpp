@@ -88,20 +88,20 @@ void EventSystem::BeginFrame()
 	{
 		double thistick = SDL_GetTicks();
 
-		dt = (thistick-lasttick)*1E-3;
+		dt = (thistick-lasttick)/1000.0;
 
 		/*if (throttle && dt < game.TickPeriod())
 		{
 			//cout << "throttling: " << lasttick.data << "," << thistick << endl;
 			SDL_Delay(10);
 			thistick = SDL_GetTicks();
-			dt = (thistick-lasttick)*1E-3;
+			dt = (thistick-lasttick)/1000.0;
 		}*/
 
 		lasttick = thistick;
 	}
 
-	RecordFPS(1/dt);
+	RecordFPS(1.0f/dt);
 }
 
 void EventSystem::ProcessEvents()
@@ -110,9 +110,9 @@ void EventSystem::ProcessEvents()
 
 	AgeToggles <SDL_Keycode> (keymap);
 	AgeToggles <int> (mbutmap);
-	for (auto & joystick : joysticks)
+	for (std::vector <Joystick>::iterator i = joysticks.begin(); i != joysticks.end(); i++)
 	{
-		joystick.AgeToggles();
+		i->AgeToggles();
 	}
 
 	while ( SDL_PollEvent( &event ) )
@@ -179,6 +179,16 @@ void EventSystem::HandleKey(DirectionEnum dir, SDL_Keycode id)
 	HandleToggle <SDL_Keycode> (keymap, dir, id);
 }
 
+EventSystem::ButtonState EventSystem::GetMouseButtonState(int id) const
+{
+	return GetToggle <int> (mbutmap, id);
+}
+
+EventSystem::ButtonState EventSystem::GetKeyState(SDL_Keycode id) const
+{
+	return GetToggle <SDL_Keycode> (keymap, id);
+}
+
 vector <int> EventSystem::GetMousePosition() const
 {
 	vector <int> o;
@@ -237,58 +247,58 @@ QT_TEST(eventsystem_test)
 	{
 		//check key insertion
 		e.TestStim(EventSystem::STIM_INSERT_KEY_DOWN);
-		auto b = e.GetKeyState(SDLK_t);
-		QT_CHECK(b.GetState() && b.GetImpulseRising() && !b.GetImpulseFalling());
+		EventSystem::ButtonState tstate = e.GetKeyState(SDLK_t);
+		QT_CHECK(tstate.down && tstate.just_down && !tstate.just_up);
 
 		//check key aging
 		e.TestStim(EventSystem::STIM_AGE_KEYS);
-		b = e.GetKeyState(SDLK_t);
-		QT_CHECK(b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetKeyState(SDLK_t);
+		QT_CHECK(tstate.down && !tstate.just_down && !tstate.just_up);
 		e.TestStim(EventSystem::STIM_AGE_KEYS); //age again
-		b = e.GetKeyState(SDLK_t);
-		QT_CHECK(b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetKeyState(SDLK_t);
+		QT_CHECK(tstate.down && !tstate.just_down && !tstate.just_up);
 
 		//check key removal
 		e.TestStim(EventSystem::STIM_INSERT_KEY_UP);
-		b = e.GetKeyState(SDLK_t);
-		QT_CHECK(!b.GetState() && !b.GetImpulseRising() && b.GetImpulseFalling());
+		tstate = e.GetKeyState(SDLK_t);
+		QT_CHECK(!tstate.down && !tstate.just_down && tstate.just_up);
 
 		//check key aging
 		e.TestStim(EventSystem::STIM_AGE_KEYS);
-		b = e.GetKeyState(SDLK_t);
-		QT_CHECK(!b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetKeyState(SDLK_t);
+		QT_CHECK(!tstate.down && !tstate.just_down && !tstate.just_up);
 		e.TestStim(EventSystem::STIM_AGE_KEYS); //age again
-		b = e.GetKeyState(SDLK_t);
-		QT_CHECK(!b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetKeyState(SDLK_t);
+		QT_CHECK(!tstate.down && !tstate.just_down && !tstate.just_up);
 	}
 
 	//mouse button stuff
 	{
 		//check button insertion
 		e.TestStim(EventSystem::STIM_INSERT_MBUT_DOWN);
-		auto b = e.GetMouseButtonState(SDL_BUTTON_LEFT);
-		QT_CHECK(b.GetState() && b.GetImpulseRising() && !b.GetImpulseFalling());
+		EventSystem::ButtonState tstate = e.GetMouseButtonState(SDL_BUTTON_LEFT);
+		QT_CHECK(tstate.down && tstate.just_down && !tstate.just_up);
 
 		//check button aging
 		e.TestStim(EventSystem::STIM_AGE_MBUT);
-		b = e.GetMouseButtonState(SDL_BUTTON_LEFT);
-		QT_CHECK(b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetMouseButtonState(SDL_BUTTON_LEFT);
+		QT_CHECK(tstate.down && !tstate.just_down && !tstate.just_up);
 		e.TestStim(EventSystem::STIM_AGE_MBUT); //age again
-		b = e.GetMouseButtonState(SDL_BUTTON_LEFT);
-		QT_CHECK(b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetMouseButtonState(SDL_BUTTON_LEFT);
+		QT_CHECK(tstate.down && !tstate.just_down && !tstate.just_up);
 
 		//check button removal
 		e.TestStim(EventSystem::STIM_INSERT_MBUT_UP);
-		b = e.GetMouseButtonState(SDL_BUTTON_LEFT);
-		QT_CHECK(!b.GetState() && !b.GetImpulseRising() && b.GetImpulseFalling());
+		tstate = e.GetMouseButtonState(SDL_BUTTON_LEFT);
+		QT_CHECK(!tstate.down && !tstate.just_down && tstate.just_up);
 
 		//check button aging
 		e.TestStim(EventSystem::STIM_AGE_MBUT);
-		b = e.GetMouseButtonState(SDL_BUTTON_LEFT);
-		QT_CHECK(!b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetMouseButtonState(SDL_BUTTON_LEFT);
+		QT_CHECK(!tstate.down && !tstate.just_down && !tstate.just_up);
 		e.TestStim(EventSystem::STIM_AGE_MBUT); //age again
-		b = e.GetMouseButtonState(SDL_BUTTON_LEFT);
-		QT_CHECK(!b.GetState() && !b.GetImpulseRising() && !b.GetImpulseFalling());
+		tstate = e.GetMouseButtonState(SDL_BUTTON_LEFT);
+		QT_CHECK(!tstate.down && !tstate.just_down && !tstate.just_up);
 	}
 
 	//mouse motion stuff

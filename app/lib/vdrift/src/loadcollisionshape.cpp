@@ -51,19 +51,18 @@ void LoadCapsuleShape(
 	cfg.get("size", size);
 
 	int axis = size.maxAxis();
-	btScalar height = size[axis];
-	btScalar radius = size[size.minAxis()] * btScalar(0.5);
+	int radius = size.minAxis();
 	if (axis == 0)
 	{
-		shape = new btCapsuleShapeX(radius, height);
+		shape = new btCapsuleShapeX(size[radius] * 0.5, size[axis]);
 	}
 	else if (axis == 1)
 	{
-		shape = new btCapsuleShape(radius, height);
+		shape = new btCapsuleShape(size[radius] * 0.5, size[axis]);
 	}
 	else
 	{
-		shape = new btCapsuleShapeZ(radius, height);
+		shape = new btCapsuleShapeZ(size[radius] * 0.5, size[axis]);
 	}
 
 	if (!shape_transform.getOrigin().isZero() && !compound)
@@ -113,12 +112,12 @@ void LoadHullShape(
 	btAlignedObjectArray<btVector3> points;
 	btAlignedObjectArray<btScalar> radii;
 	btScalar has_radius = 0;
-	for (const auto & hull : cfg)
+	for (PTree::const_iterator i = cfg.begin(); i != cfg.end(); ++i)
 	{
 		btVector3 point(0, 0, 0);
 		btScalar radius = 0;
 
-		std::istringstream str(hull.second.value());
+		std::istringstream str(i->second.value());
 		str >> point;
 		str >> radius;
 		has_radius += radius;

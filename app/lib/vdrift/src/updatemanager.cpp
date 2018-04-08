@@ -68,6 +68,7 @@ bool UpdateManager::Init(
 void UpdateManager::StartCheckForUpdates(GameDownloader downloader, Gui & gui)
 {
 	const bool verbose = true;
+	gui.ActivatePage("Downloading", 0.25, error_output);
 
 	// download svn folder view to a temporary folder
 	const std::string url = autoupdate.GetMetaUrl() + group + "/";
@@ -120,15 +121,16 @@ void UpdateManager::Show(Gui & gui)
 	std::set <std::string> allobjects;
 
 	// start off with the list we have on disk
-	for (const auto & obj : disklist)
+	for (std::vector<std::pair <std::string, std::string> >::const_iterator i = disklist.begin(); i != disklist.end(); i++)
 	{
-		allobjects.insert(obj.first);
+		allobjects.insert(i->first);
 	}
 
 	// now add in the cars/tracks in the remote repo
-	for (const auto & obj : autoupdate.GetAvailableUpdates(group))
+	std::map <std::string, int> remote = autoupdate.GetAvailableUpdates(group);
+	for (std::map <std::string, int>::const_iterator i = remote.begin(); i != remote.end(); i++)
 	{
-		allobjects.insert(obj.first);
+		allobjects.insert(i->first);
 	}
 
 	if (allobjects.empty())
@@ -138,18 +140,23 @@ void UpdateManager::Show(Gui & gui)
 	}
 
 	// find the car/track at index cur_object_id
+	std::string objectname;
+	int count = 0;
 	while (cur_object_id < 0)
 		cur_object_id = allobjects.size() + cur_object_id;
 	cur_object_id = cur_object_id % allobjects.size();
-
-	auto it = allobjects.begin();
-	std::advance(it, cur_object_id);
-	objectname = *it;
+	for (std::set <std::string>::const_iterator i = allobjects.begin(); i != allobjects.end(); i++, count++)
+	{
+		if (count == cur_object_id)
+		{
+			objectname = *i;
+		}
+	}
 
 	if (verbose)
 	{
 		info_output << "All " + group + ": ";
-		for (auto i = allobjects.begin(); i != allobjects.end(); i++)
+		for (std::set <std::string>::const_iterator i = allobjects.begin(); i != allobjects.end(); i++)
 		{
 			if (i != allobjects.begin())
 				info_output << ", ";
@@ -197,9 +204,10 @@ void UpdateManager::Show(Gui & gui)
 
 bool UpdateManager::ApplyUpdate(GameDownloader downloader, Gui & gui, const PathManager & pathmanager)
 {
-	if (objectname.empty())
+	std::string objectname;
+	if (!gui.GetLabelText(guipage, "name", objectname))
 	{
-		error_output << "ApplyUpdate: No object set for update" << std::endl;
+		error_output << "Couldn't find the name label to update in " + guipage + "." << std::endl;
 		return false;
 	}
 

@@ -33,26 +33,20 @@ GuiImage::~GuiImage()
 	// dtor
 }
 
-void GuiImage::Update(SceneNode & scene, float /*dt*/)
+void GuiImage::Update(SceneNode & scene, float dt)
 {
-	if (m_update)
+	GuiWidget::Update(scene, dt);
+	Drawable & d = GetDrawable(scene);
+	if (d.GetDrawEnable() && m_load)
 	{
-		Drawable & d = GetDrawable(scene);
-		d.SetColor(m_rgb[0], m_rgb[1], m_rgb[2], m_alpha);
-		d.SetDrawEnable(!m_name.empty() && m_visible && m_alpha > 0);
-		m_update = false;
-
-		if (m_load)
-		{
-			assert(m_content);
-			TextureInfo texinfo;
-			texinfo.mipmap = false;
-			texinfo.repeatu = false;
-			texinfo.repeatv = false;
-			m_content->load(m_texture, m_path, m_name + m_ext, texinfo);
-			d.SetTextures(m_texture->GetId());
-			m_load = false;
-		}
+		assert(m_content);
+		TextureInfo texinfo;
+		texinfo.mipmap = false;
+		texinfo.repeatu = false;
+		texinfo.repeatv = false;
+		m_content->load(m_texture, m_path, m_name + m_ext, texinfo);
+		d.SetTextures(m_texture->GetId());
+		m_load = false;
 	}
 }
 
@@ -61,33 +55,18 @@ void GuiImage::SetupDrawable(
 	ContentManager & content,
 	const std::string & path,
 	const std::string & ext,
-	const float xywh[4],
-	const float uv[4],
-	const float z)
+	float x, float y, float w, float h, float z)
 {
 	m_content = &content;
 	m_path = path;
 	m_ext = ext;
-
-	float x1 = xywh[0] - xywh[2] * 0.5f;
-	float y1 = xywh[1] - xywh[3] * 0.5f;
-	float x2 = xywh[0] + xywh[2] * 0.5f;
-	float y2 = xywh[1] + xywh[3] * 0.5f;
-	m_varray.SetTo2DQuad(x1, y1, x2, y2, uv[0], uv[1], uv[2], uv[3]);
+	m_varray.SetToBillboard(x - w * 0.5f, y - h * 0.5f, x + w * 0.5f, y + h * 0.5f);
 	m_draw = scene.GetDrawList().twodim.insert(Drawable());
-
+	m_visible = false;
 	Drawable & d = GetDrawable(scene);
 	d.SetVertArray(&m_varray);
 	d.SetCull(false);
 	d.SetDrawOrder(z);
-	d.SetDrawEnable(false);
-}
-
-bool GuiImage::GetProperty(const std::string & name, Slot1<const std::string &> *& slot)
-{
-	if (name == "image")
-		return (slot = &set_image);
-	return GuiWidget::GetProperty(name, slot);
 }
 
 void GuiImage::SetImage(const std::string & value)
@@ -96,6 +75,7 @@ void GuiImage::SetImage(const std::string & value)
 	{
 		m_name = value;
 		m_load = !value.empty();
+		m_visible = m_load;
 		m_update = true;
 	}
 }

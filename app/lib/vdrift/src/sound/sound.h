@@ -25,10 +25,12 @@
 #include "tripplebuffer.h"
 #include "mathvector.h"
 #include "quaternion.h"
+#include "memory.h"
 
-#include <memory>
 #include <iosfwd>
 #include <vector>
+
+struct SDL_mutex;
 
 class Sound
 {
@@ -38,7 +40,7 @@ public:
 	~Sound();
 
 	// init sound device
-	bool Init(unsigned short buffersize, std::ostream & info, std::ostream & error);
+	bool Init(int buffersize, std::ostream & info, std::ostream & error);
 
 	// get device info
 	const SoundInfo & GetDeviceInfo() const;
@@ -55,7 +57,7 @@ public:
 	// attenuation: y = a * (x - b)^c + d
 	void SetAttenuation(const float attenuation[4]);
 
-	size_t AddSource(std::shared_ptr<SoundBuffer> buffer, float offset, bool is3d, bool loop);
+	size_t AddSource(std::tr1::shared_ptr<SoundBuffer> buffer, float offset, bool is3d, bool loop);
 
 	void RemoveSource(size_t id);
 
@@ -83,6 +85,7 @@ public:
 	void Update(bool pause);
 
 private:
+	std::ostream * log_error;
 	SoundInfo deviceinfo;
 	Vec3 listener_pos;
 	Vec3 listener_vel;
@@ -91,6 +94,7 @@ private:
 	float sound_volume;
 	bool initdone;
 	bool disable;
+	bool set_pause;
 
 	// state structs
 	struct SourceActive
@@ -101,7 +105,7 @@ private:
 
 	struct Source
 	{
-		std::shared_ptr<SoundBuffer> buffer;
+		std::tr1::shared_ptr<SoundBuffer> buffer;
 		Vec3 position;
 		Vec3 velocity;
 		float offset;
@@ -115,15 +119,17 @@ private:
 
 	struct Sampler
 	{
+		static const int denom = 32768;
+		static const int max_gain_delta = (denom * 173) / 44100; // 256 samples from min to max gain
 		const SoundBuffer * buffer;
-		unsigned samples_per_channel;
-		unsigned sample_pos;
-		unsigned sample_pos_remainder;
-		unsigned pitch;
-		unsigned gain1;
-		unsigned gain2;
-		unsigned last_gain1;
-		unsigned last_gain2;
+		int samples_per_channel;
+		int sample_pos;
+		int sample_pos_remainder;
+		int pitch;
+		int gain1;
+		int gain2;
+		int last_gain1;
+		int last_gain2;
 		bool playing;
 		bool loop;
 		size_t id;
@@ -133,14 +139,14 @@ private:
 	struct SamplerAdd
 	{
 		const SoundBuffer * buffer;
-		unsigned offset;
+		int offset;
 		bool loop;
 		int id;
 	};
 
 	struct SamplerSet
 	{
-		unsigned gain1, gain2, pitch;
+		int gain1, gain2, pitch;
 	};
 
 	struct SamplersUpdate
@@ -149,9 +155,14 @@ private:
 		std::vector<SamplerAdd> sadd;
 		std::vector<size_t> sremove;
 		size_t id;
-		bool pause;
 		bool empty() const;
 	};
+
+	// sound thread message system
+	TrippleBuffer<SamplersUpdate> samplers_update;
+	TrippleBuffer<std::vector<size_t> > sources_stop;
+	SDL_mutex * sampler_lock;
+	SDL_mutex * source_lock;
 
 	// sound sources state
 	std::vector<SourceActive> sources_active;
@@ -162,18 +173,16 @@ private:
 	size_t update_id;
 	bool sources_pause;
 
-	// sound thread message system
-	TrippleBuffer<SamplersUpdate> samplers_update;
-	TrippleBuffer<std::vector<size_t> > sources_stop;
-
 	// sound thread state
-	std::vector<int> buffer[2];
+	std::vector<int> buffer1, buffer2;
 	std::vector<Sampler> samplers;
 	size_t samplers_num;
 	bool samplers_pause;
 	bool samplers_fade;
 
 	// main thread methods
+	void GetSourceChanges();
+
 	void ProcessSourceStop();
 
 	void ProcessSourceRemove();
@@ -189,8 +198,7 @@ private:
 
 	void ProcessSamplerUpdate();
 
-	template <typename stream_type, typename buffer_type, int vmin, int vmax>
-	void ProcessSamplers(unsigned char stream[], unsigned len);
+	void ProcessSamplers(unsigned char *stream, int len);
 
 	void ProcessSamplerRemove();
 
@@ -198,15 +206,14 @@ private:
 
 	void SetSourceChanges();
 
-	template <typename stream_type, typename buffer_type, int vmin, int vmax>
-	void CallbackStereo(void * sound, unsigned char stream[], int len);
+	void Callback16bitStereo(void *sound, unsigned char *stream, int len);
 
-	static void CallbackWrapper(void * sound, unsigned char stream[], int len);
+	static void CallbackWrapper(void *sound, unsigned char *stream, int len);
 
-	template <typename sample_type, typename buffer_type>
-	static void SampleAndAdvanceWithPitch(Sampler & sampler, buffer_type chan1[], buffer_type chan2[], unsigned len);
+	static void SampleAndAdvanceWithPitch16bit(
+		Sampler & sampler, int * chan1, int * chan2, int len);
 
-	static void AdvanceWithPitch(Sampler & sampler, unsigned len);
+	static void AdvanceWithPitch(Sampler & sampler, int len);
 };
 
 #endif

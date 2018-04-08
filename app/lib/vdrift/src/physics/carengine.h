@@ -23,6 +23,7 @@
 #include "driveshaft.h"
 #include "LinearMath/btVector3.h"
 #include "spline.h"
+#include "joeserialize.h"
 #include "macros.h"
 
 #include <iosfwd>
@@ -32,16 +33,13 @@ class PTree;
 
 struct CarEngineInfo
 {
-	btScalar displacement; ///< used to calculate engine friction
-	btScalar maxpower; ///< max power output
 	btScalar redline; ///< the redline in RPMs (used only for the redline graphics)
 	btScalar rpm_limit; ///< peak engine RPMs after which limiting occurs
-	btScalar idle_throttle; ///< idle throttle percentage; this is calculated algorithmically
-	btScalar idle_throttle_slope; ///< idle throttle rpm slope
+	btScalar idle; ///< idle throttle percentage; this is calculated algorithmically
 	btScalar start_rpm; ///< initial condition RPM
 	btScalar stall_rpm; ///< RPM at which the engine dies
 	btScalar fuel_rate; ///< fuel rate kg/Ws based on fuel heating value(4E7) and engine efficiency(0.35)
-	btScalar friction[3]; ///< friction torque coefficients
+	btScalar friction; ///< friction coefficient from the engine; this is calculated algorithmically
 	Spline<btScalar> torque_curve;
 	btVector3 position;
 	btScalar inertia;
@@ -57,34 +55,29 @@ struct CarEngineInfo
 	/// load engine from config file
 	bool Load(const PTree & cfg, std::ostream & error_output);
 
-	btScalar GetMaxTorque() const;
+	/// Set the torque curve using a vector of (RPM, torque) pairs.
+	/// also recalculate engine friction
+	void SetTorqueCurve(
+		btScalar redline,
+		const std::vector<std::pair<btScalar, btScalar> > & torque);
 
-	btScalar GetTorque(btScalar throttle, btScalar rpm) const;
+	btScalar GetTorque(
+		btScalar throttle,
+		btScalar rpm) const;
 
-	btScalar GetFrictionTorque(btScalar throttle, btScalar rpm) const;
+	btScalar GetFrictionTorque(
+		btScalar angvel,
+		btScalar friction_factor,
+		btScalar throttle_position) const;
 };
 
 class CarEngine
 {
+friend class joeserialize::Serializer;
 public:
 	CarEngine();
 
 	void Init(const CarEngineInfo & info);
-
-	btScalar GetDisplacement() const
-	{
-		return info.displacement;
-	}
-
-	btScalar GetMaxPower() const
-	{
-		return info.maxpower;
-	}
-
-	btScalar GetMaxTorque() const
-	{
-		return info.GetMaxTorque();
-	}
 
 	btScalar GetRPMLimit() const
 	{
@@ -98,7 +91,7 @@ public:
 
 	btScalar GetIdle() const
 	{
-		return info.idle_throttle;
+		return info.idle;
 	}
 
 	btScalar GetStartRPM() const
@@ -128,7 +121,7 @@ public:
 
 	btScalar GetRPM() const
 	{
-		return shaft.ang_velocity * btScalar(30 / M_PI);
+		return shaft.ang_velocity * 30.0 / M_PI;
 	}
 
 	btScalar GetThrottle() const
@@ -167,7 +160,7 @@ public:
 
 	void StartEngine()
 	{
-		shaft.ang_velocity = info.start_rpm * btScalar(M_PI / 30.0);
+		shaft.ang_velocity = info.start_rpm * 3.141593 / 30.0;
 	}
 
 	///set the throttle position where 0.0 is no throttle and 1.0 is full throttle
@@ -190,30 +183,9 @@ public:
 	/// calculate torque acting on crankshaft, update engine angular velocity
 	btScalar Integrate(btScalar clutch_drag, btScalar clutch_angvel, btScalar dt);
 
-	template <class Stream>
-	void DebugPrint(Stream & out) const
-	{
-		out << "---Engine---" << "\n";
-		out << "Throttle position: " << throttle_position << "\n";
-		out << "Combustion torque: " << combustion_torque << "\n";
-		out << "Clutch torque: " << -clutch_torque << "\n";
-		out << "Friction torque: " << friction_torque << "\n";
-		out << "Total torque: " << GetTorque() << "\n";
-		out << "RPM: " << GetRPM() << "\n";
-		out << "Rev limit exceeded: " << rev_limit_exceeded << "\n";
-		out << "Running: " << !stalled << "\n";
-	}
+	void DebugPrint(std::ostream & out) const;
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
-	{
-		_SERIALIZE_(s, shaft.ang_velocity);
-		_SERIALIZE_(s, throttle_position);
-		_SERIALIZE_(s, clutch_torque);
-		_SERIALIZE_(s, out_of_gas);
-		_SERIALIZE_(s, rev_limit_exceeded);
-		return true;
-	}
+	bool Serialize(joeserialize::Serializer & s);
 
 private:
 	CarEngineInfo info;

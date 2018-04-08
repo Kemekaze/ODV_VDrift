@@ -35,7 +35,6 @@ void GuiImageList::SetupDrawable(
 	ContentManager & content,
 	const std::string & path,
 	const std::string & ext,
-	const float uv[4],
 	float z)
 {
 	m_elements.resize(m_rows * m_cols);
@@ -44,23 +43,24 @@ void GuiImageList::SetupDrawable(
 		float x, y;
 		GetElemPos(i, x, y);
 
-		float xywh[4] = {x + m_elemw * 0.5f, y + m_elemh * 0.5f, m_elemw, m_elemh};
-
 		GuiImage * element = new GuiImage();
-		element->SetupDrawable(scene, content, path, ext, xywh, uv, z);
+		element->SetupDrawable(
+			scene, content, path, ext,
+			x + m_elemw * 0.5f, y + m_elemh * 0.5f, m_elemw, m_elemh, z);
+
 		m_elements[i] = element;
 	}
 }
 
 void GuiImageList::SetImage(const std::string & value)
 {
-	for (auto element : m_elements)
+	for (size_t i = 0; i < m_elements.size(); ++i)
 	{
-		static_cast<GuiImage*>(element)->SetImage(value);
+		static_cast<GuiImage*>(m_elements[i])->SetImage(value);
 	}
 }
 
-void GuiImageList::UpdateElements(SceneNode & /*scene*/)
+void GuiImageList::UpdateElements(SceneNode & scene)
 {
 	assert(m_values.size() <= m_elements.size());
 	for (size_t i = 0; i < m_values.size(); ++i)

@@ -56,16 +56,15 @@ Settings::Settings() :
 	antialiasing(0),
 	anisotropic(0),
 	trackmap(true),
-	hud("Hud"),
-	fov(45.0),
+	show_hud(true),
+	FOV(45.0),
 	abs(true),
 	tcs(true),
 	joytype("joystick"),
 	joy200(false),
 	speed_sensitivity(1.0),
+	joystick_calibrated(false),
 	view_distance(1000.0),
-	steering_assist(true),
-	autoreverse(true),
 	autoclutch(true),
 	autoshift(true),
 	racingline(false),
@@ -164,8 +163,8 @@ void Settings::Serialize(bool write, Config & config)
 	Param(config, write, section, "anisotropic", anisotropic);
 	Param(config, write, section, "antialiasing", antialiasing);
 	Param(config, write, section, "trackmap", trackmap);
-	Param(config, write, section, "hud", hud);
-	Param(config, write, section, "camerafov", fov);
+	Param(config, write, section, "show_hud", show_hud);
+	Param(config, write, section, "FOV", FOV);
 	Param(config, write, section, "mph", mph);
 	Param(config, write, section, "view_distance", view_distance);
 	Param(config, write, section, "racingline", racingline);
@@ -201,6 +200,7 @@ void Settings::Serialize(bool write, Config & config)
 	Param(config, write, section, "device_type", joytype);
 	Param(config, write, section, "two_hundred", joy200);
 	joy200 = false;
+	Param(config, write, section, "calibrated", joystick_calibrated);
 	Param(config, write, section, "ff_device", ff_device);
 	Param(config, write, section, "ff_gain", ff_gain);
 	Param(config, write, section, "ff_invert", ff_invert);
@@ -208,8 +208,6 @@ void Settings::Serialize(bool write, Config & config)
 
 	config.get("control", section);
 	Param(config, write, section, "speed_sens_steering", speed_sensitivity);
-	Param(config, write, section, "steering_assist", steering_assist);
-	Param(config, write, section, "autoreverse", autoreverse);
 	Param(config, write, section, "autoclutch", autoclutch);
 	Param(config, write, section, "autotrans", autoshift);
 	Param(config, write, section, "mousegrab", mousegrab);
@@ -244,15 +242,15 @@ void Settings::Get(std::map<std::string, std::string> & options)
 {
 	Config tempconfig;
 	Serialize(true, tempconfig);
-	for (const auto & s : tempconfig)
+	for (Config::const_iterator ic = tempconfig.begin(); ic != tempconfig.end(); ++ic)
 	{
-		const std::string & section = s.first;
-		for (const auto & p : s.second)
+		std::string section = ic->first;
+		for (Config::Section::const_iterator is = ic->second.begin(); is != ic->second.end(); ++is)
 		{
-			if (!section.empty())
-				options[section + "." + p.first] = p.second;
+			if (section.length() > 0)
+				options[section + "." + is->first] = is->second;
 			else
-				options[p.first] = p.second;
+				options[is->first] = is->second;
 		}
 	}
 }
@@ -260,17 +258,17 @@ void Settings::Get(std::map<std::string, std::string> & options)
 void Settings::Set(const std::map<std::string, std::string> & options)
 {
 	Config tempconfig;
-	for (const auto & option : options)
+	for (std::map<std::string, std::string>::const_iterator i = options.begin(); i != options.end(); ++i)
 	{
 		std::string section;
-		std::string param = option.first;
+		std::string param = i->first;
 		size_t n = param.find(".");
 		if (n < param.length())
 		{
 			section = param.substr(0, n);
 			param.erase(0, n + 1);
 		}
-		tempconfig.set(section, param, option.second);
+		tempconfig.set(section, param, i->second);
 	}
 	Serialize(false, tempconfig);
 }

@@ -22,7 +22,7 @@
 
 #include "vertexarray.h"
 #include "vertexbuffer.h"
-#include "aabb.h"
+#include "mathvector.h"
 
 #include <iosfwd>
 #include <string>
@@ -30,6 +30,7 @@
 /// Loading data into the mesh vertexarray is implemented by derived classes.
 class Model
 {
+friend class joeserialize::Serializer;
 public:
 	Model();
 
@@ -47,6 +48,8 @@ public:
 
 	bool Load(const VertexArray & nvarray, std::ostream & error_output);
 
+	bool Serialize(joeserialize::Serializer & s);
+
 	bool WriteToFile(const std::string & filepath);
 
 	bool ReadFromFile(const std::string & filepath, std::ostream & error_output);
@@ -54,31 +57,37 @@ public:
 	/// vertex buffer interface
 	VertexBuffer::Segment & GetVertexBufferSegment() { return vbs; };
 
-	const VertexArray & GetVertexArray() const { return varray; };
-
-	const Aabb<float> & GetAabb() const { assert(generatedmetrics); return aabb; };
-
-	/// Recalculate mesh bounding box
+	/// Recalculate mesh bounding box and radius
 	void GenMeshMetrics();
+
+	/// Get aabb size.
+	Vec3 GetSize() const;
+
+	/// Get aabb center.
+	Vec3 GetCenter() const;
+
+	/// Get bounding radius relative to center.
+	float GetRadius() const;
 
 	void Clear();
 
-	bool Loaded() const;
+	const VertexArray & GetVertexArray() const;
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
-	{
-		_SERIALIZE_(s, varray);
-		return true;
-	}
+	bool Loaded() const;
 
 protected:
 	VertexArray varray;			///< to be filled by the derived classes
 
 private:
 	VertexBuffer::Segment vbs;	///< vertex buffer segment
-	Aabb<float> aabb;			///< Metrics
+
+	/// Metrics
+	Vec3 min;
+	Vec3 max;
+	float radius;
 	bool generatedmetrics;
+
+	void RequireMetrics() const;
 
 	void ClearMetrics();
 

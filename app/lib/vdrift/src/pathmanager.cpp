@@ -64,8 +64,7 @@ void PathManager::Init(std::ostream & info_output, std::ostream & error_output)
 	if ((homedir = getenv("USERPROFILE")) == NULL)
 		homedir = "data";	// WIN 9x/Me
 #endif
-	if (homedir)
-		home_directory += homedir;
+	home_directory += homedir;
 
 	// Set data dir.
 	const char * datadir = getenv("VDRIFT_DATA_DIRECTORY");

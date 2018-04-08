@@ -20,6 +20,9 @@
 #include "quaternion.h"
 #include "unittest.h"
 
+#include <iostream>
+using std::ostream;
+
 QT_TEST(quaternion_test)
 {
 	Quat test1;

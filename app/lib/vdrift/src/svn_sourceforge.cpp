@@ -40,7 +40,7 @@ std::map <std::string, int> SvnSourceForge::ParseFolderView(std::istream & page)
 	// Loop through each entry.
 	while (page)
 	{
-		Utils::SeekTo(page, "<i class=\"fa fa-folder\"></i>&nbsp;");
+		Utils::SeekTo(page, "\"ico folder\"></b>\n          <span>");
 		const std::string name = Utils::SeekTo(page, "<");
 
 		Utils::SeekTo(page, "[r");

@@ -30,8 +30,8 @@ LoadDrawable::LoadDrawable(
 	const std::string & path,
 	const int anisotropy,
 	ContentManager & content,
-	std::set<std::shared_ptr<Model> > & models,
-	std::set<std::shared_ptr<Texture> > & textures,
+	std::set<std::tr1::shared_ptr<Model> > & models,
+	std::set<std::tr1::shared_ptr<Texture> > & textures,
 	std::ostream & error) :
 	path(path),
 	anisotropy(anisotropy),
@@ -69,7 +69,7 @@ bool LoadDrawable::operator()(
 	Drawable drawable;
 
 	// set textures
-	std::shared_ptr<Texture> tex[3];
+	std::tr1::shared_ptr<Texture> tex[3];
 	TextureInfo texinfo;
 	texinfo.mipmap = true;
 	texinfo.anisotropy = anisotropy;
@@ -106,7 +106,7 @@ bool LoadDrawable::operator()(
 	drawable.SetTextures(tex[0]->GetId(), tex[1]->GetId(), tex[2]->GetId());
 
 	// set mesh
-	std::shared_ptr<Model> mesh;
+	std::tr1::shared_ptr<Model> mesh;
 	content.load(mesh, path, meshname);
 
 	std::string scalestr;
@@ -152,9 +152,8 @@ bool LoadDrawable::operator()(
 			SceneNode::Handle nodehandle = topnode.AddNode();
 			node = &topnode.GetNode(nodehandle);
 		}
-		const float deg2rad = M_PI / 180.0;
 		node->GetTransform().SetTranslation(pos);
-		node->GetTransform().SetRotation(Quat(rot[0] * deg2rad, rot[1] * deg2rad, rot[2] * deg2rad));
+		node->GetTransform().SetRotation(Quat(rot[0]/180*M_PI, rot[1]/180*M_PI, rot[2]/180*M_PI));
 	}
 
 	// set drawable

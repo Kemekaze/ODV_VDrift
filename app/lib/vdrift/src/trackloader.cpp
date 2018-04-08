@@ -23,20 +23,11 @@
 #include "coordinatesystem.h"
 #include "tobullet.h"
 #include "k1999.h"
-#include "minmax.h"
 #include "content/contentmanager.h"
 #include "graphics/texture.h"
 #include "graphics/model.h"
 
-#include "BulletCollision/CollisionShapes/btBoxShape.h"
-#include "BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h"
-#include "BulletCollision/CollisionShapes/btCompoundShape.h"
-#include "BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h"
-#include "BulletDynamics/Dynamics/btRigidBody.h"
-
 #define EXTBULLET
-
-static const float deg2rad = M_PI / 180;
 
 static inline std::istream & operator >> (std::istream & lhs, btVector3 & rhs)
 {
@@ -65,9 +56,9 @@ static inline std::istream & operator >> (std::istream & lhs, std::vector<std::s
 static btIndexedMesh GetIndexedMesh(const Model & model)
 {
 	const float * vertices;
-	unsigned int vcount;
+	int vcount;
 	const unsigned int * faces;
-	unsigned int fcount;
+	int fcount;
 	model.GetVertexArray().GetVertices(vertices, vcount);
 	model.GetVertexArray().GetFaces(faces, fcount);
 
@@ -86,7 +77,7 @@ static btIndexedMesh GetIndexedMesh(const Model & model)
 
 struct Track::Loader::Object
 {
-	std::shared_ptr<Model> model;
+	std::tr1::shared_ptr<Model> model;
 	std::string texture;
 	int transparent_blend;
 	int clamptexture;
@@ -132,8 +123,7 @@ Track::Loader::Loader(
 	min_params(14),
 	error(false),
 	list(false),
-	track_shape(0),
-	nodes(0)
+	track_shape(0)
 {
 	objectpath = trackpath + "/objects";
 	objectdir = trackdir + "/objects";
@@ -315,7 +305,7 @@ std::pair<bool, bool> Track::Loader::Continue()
 
 bool Track::Loader::LoadShape(const PTree & cfg, const Model & model, Body & body)
 {
-	if (body.mass < 1E-3f)
+	if (body.mass < 1E-3)
 	{
 		btTriangleIndexVertexArray * mesh = new btTriangleIndexVertexArray();
 		mesh->addIndexedMesh(GetIndexedMesh(model));
@@ -348,8 +338,9 @@ bool Track::Loader::LoadShape(const PTree & cfg, const Model & model, Body & bod
 		if (!shape)
 		{
 			// fall back to model bounding box
-			shape = new btBoxShape(ToBulletVector(model.GetAabb().GetExtent()));
-			center = center + ToBulletVector(model.GetAabb().GetCenter());
+			btVector3 size = ToBulletVector(model.GetSize());
+			shape = new btBoxShape(size * 0.5);
+			center = center + ToBulletVector(model.GetCenter());
 		}
 		if (compound)
 		{
@@ -418,7 +409,7 @@ Track::Loader::body_iterator Track::Loader::LoadBody(const PTree & cfg)
 		return bodies.end();
 	}
 
-	std::shared_ptr<Model> model;
+	std::tr1::shared_ptr<Model> model;
 	if ((packload && content.load(model, objectdir, model_name, pack)) ||
 		content.load(model, objectdir, model_name))
 	{
@@ -437,7 +428,7 @@ Track::Loader::body_iterator Track::Loader::LoadBody(const PTree & cfg)
 	}
 
 	// load textures
-	std::shared_ptr<Texture> tex[3];
+	std::tr1::shared_ptr<Texture> tex[3];
 	TextureInfo texinfo;
 	texinfo.mipmap = mipmap || anisotropy; //always mipmap if anisotropy is on
 	texinfo.anisotropy = anisotropy;
@@ -478,7 +469,7 @@ void Track::Loader::AddBody(SceneNode & scene, const Body & body)
 {
 	bool nolighting = body.nolighting;
 	bool alphablend = body.drawable.GetDecal();
-	auto dlist = &scene.GetDrawList().normal_noblend;
+	keyed_container<Drawable> * dlist = &scene.GetDrawList().normal_noblend;
 	if (body.skybox)
 	{
 		if (alphablend)
@@ -521,10 +512,10 @@ bool Track::Loader::LoadNode(const PTree & sec)
 
 	Vec3 position, angle;
 	bool has_transform = sec.get("position",  position) | sec.get("rotation", angle);
-	Quat rotation(angle[0] * deg2rad, angle[1] * deg2rad, angle[2] * deg2rad);
+	Quat rotation(angle[0]/180*M_PI, angle[1]/180*M_PI, angle[2]/180*M_PI);
 
 	const Body & body = ib->second;
-	if (body.mass < 1E-3f)
+	if (body.mass < 1E-3)
 	{
 		// static geometry
 		if (has_transform)
@@ -690,7 +681,7 @@ bool Track::Loader::AddObject(const Object & object)
 	texinfo.repeatu = object.clamptexture != 1 && object.clamptexture != 2;
 	texinfo.repeatv = object.clamptexture != 1 && object.clamptexture != 3;
 
-	std::shared_ptr<Texture> texture0, texture1, texture2;
+	std::tr1::shared_ptr<Texture> texture0, texture1, texture2;
 	{
 		content.load(texture0, objectdir, object.texture, texinfo);
 		data.textures.insert(texture0);
@@ -830,7 +821,7 @@ std::pair<bool, bool> Track::Loader::ContinueOld()
 	if (object.skybox && data.vertical_tracking_skyboxes)
 	{
 		VertexArray va = object.model->GetVertexArray();
-		va.Translate(0, 0, -object.model->GetAabb().GetCenter()[2]);
+		va.Translate(0, 0, -object.model->GetCenter()[2]);
 		object.model->Load(va, error_output);
 	}
 
@@ -854,14 +845,14 @@ bool Track::Loader::LoadSurfaces()
 
 	PTree param;
 	read_ini(file, param);
-	for (const auto & node : param)
+	for (PTree::const_iterator is = param.begin(); is != param.end(); ++is)
 	{
-		if (node.first.find("surface") != 0)
+		if (is->first.find("surface") != 0)
 		{
 			continue;
 		}
 
-		const PTree & surf_cfg = node.second;
+		const PTree & surf_cfg = is->second;
 		data.surfaces.push_back(TrackSurface());
 		TrackSurface & surface = data.surfaces.back();
 
@@ -869,12 +860,12 @@ bool Track::Loader::LoadSurfaces()
 		surf_cfg.get("Type", type);
 		surface.setType(type);
 
-		float temp = 0;
+		float temp = 0.0;
 		surf_cfg.get("BumpWaveLength", temp, error_output);
-		if (temp <= 0)
+		if (temp <= 0.0)
 		{
-			error_output << "Surface Type = " << type << " has BumpWaveLength = 0 in " << path << std::endl;
-			temp = 1;
+			error_output << "Surface Type = " << type << " has BumpWaveLength = 0.0 in " << path << std::endl;
+			temp = 1.0;
 		}
 		surface.bumpWaveLength = temp;
 
@@ -912,7 +903,6 @@ bool Track::Loader::LoadRoads()
 
 	int numroads = 0;
 	trackfile >> numroads;
-	data.roads.reserve(numroads);
 	for (int i = 0; i < numroads && trackfile; ++i)
 	{
 		data.roads.push_back(RoadStrip());
@@ -924,16 +914,14 @@ bool Track::Loader::LoadRoads()
 
 bool Track::Loader::CreateRacingLines()
 {
-	K1999 k1999;
-	for (auto & road : data.roads)
+	K1999 k1999data;
+	for (std::list <RoadStrip>::iterator i = data.roads.begin(); i != data.roads.end(); ++i)
 	{
-		// K1999 requires a closed circuit
-		if (road.GetClosed())
+		if (k1999data.LoadData(*i))
 		{
-			k1999.LoadData(road);
-			k1999.CalcRaceLine();
-			k1999.UpdateRoadStrip(road);
-			CreateRacingLine(road);
+			k1999data.CalcRaceLine();
+			k1999data.UpdateRoadStrip(*i);
+			CreateRacingLine(*i);
 		}
 	}
 	return true;
@@ -955,16 +943,17 @@ static void AddRacingLineSegment(
 		faces.insert(faces.end(), fs, fs + 6);
 	}
 
-	distance += (patch.GetRacingLine() - prev_segment).Magnitude();
-	prev_segment = patch.GetRacingLine();
+	const Bezier & p = patch.GetPatch();
+	distance += (p.GetRacingLine() - prev_segment).Magnitude();
+	prev_segment = p.GetRacingLine();
 
 	const float tc[4] = {0, distance, 1, distance};
 	texcoords.insert(texcoords.end(), tc, tc + 4);
 
 	const float hwidth = 0.2;
 	const Vec3 zoffset(0.0, 0.0, 0.1);
-	const Vec3 r = patch.GetRacingLine() + zoffset;
-	const Vec3 t = (patch.GetPoint(0, 0) - patch.GetPoint(0, 3)).Normalize();
+	const Vec3 r = p.GetRacingLine() + zoffset;
+	const Vec3 t = (p.GetPoint(0, 0) - p.GetPoint(0, 3)).Normalize();
 	const Vec3 v0 = r - t * hwidth;
 	const Vec3 v1 = r + t * hwidth;
 
@@ -978,7 +967,7 @@ void Track::Loader::CreateRacingLine(const RoadStrip & strip)
 		return;
 
 	// get texture
-	std::shared_ptr<Texture> texture;
+	std::tr1::shared_ptr<Texture> texture;
 	content.load(texture, texturedir, "racingline.png", TextureInfo());
 	data.textures.insert(texture);
 
@@ -999,7 +988,7 @@ void Track::Loader::CreateRacingLine(const RoadStrip & strip)
 
 	// generate racing line
 	float line_length = 0;
-	Vec3 line_center = strip.GetPatches()[0].GetRacingLine();
+	Vec3 line_center = strip.GetPatches()[0].GetPatch().GetRacingLine();
 	for (size_t n = 0, m = 0; n < batch_count; ++n)
 	{
 		// fill batch
@@ -1019,7 +1008,7 @@ void Track::Loader::CreateRacingLine(const RoadStrip & strip)
 			&texcoords[0], texcoords.size());
 
 		// create model
-		std::shared_ptr<Model> model(new Model());
+		std::tr1::shared_ptr<Model> model(new Model());
 		model->Load(vertex_array, error_output);
 		data.models.insert(model);
 
@@ -1047,10 +1036,10 @@ bool Track::Loader::LoadStartPositions(const PTree & info)
 		std::ostringstream so_name;
 		so_name << "start orientation " << sp_num;
 		Quat q;
-		std::vector <float> angle(3, 0);
+		std::vector <float> angle(3, 0.0);
 		if (info.get(so_name.str(), angle, error_output))
 		{
-			q.SetEulerZYX(angle[0] * deg2rad, angle[1] * deg2rad, angle[2] * deg2rad);
+			q.SetEulerZYX(angle[0] * M_PI/180, angle[1] * M_PI/180, angle[2] * M_PI/180);
 		}
 
 		Quat orient(q[2], q[0], q[1], q[3]);
@@ -1073,9 +1062,10 @@ bool Track::Loader::LoadStartPositions(const PTree & info)
 	if (data.reverse)
 	{
 		// flip start positions
-		for (auto & start_position : data.start_positions)
+		for (std::vector <std::pair <Vec3, Quat > >::iterator i = data.start_positions.begin();
+			i != data.start_positions.end(); ++i)
 		{
-			start_position.second.Rotate(M_PI, 0, 0, 1);
+			i->second.Rotate(M_PI, 0, 0, 1);
 		}
 
 		// reverse start positions
@@ -1088,28 +1078,34 @@ bool Track::Loader::LoadStartPositions(const PTree & info)
 bool Track::Loader::LoadLapSections(const PTree & info)
 {
 	// get timing sectors
-	unsigned num_roads = data.roads.size();
-	unsigned lapmarkers = 0;
+	int lapmarkers = 0;
 	if (info.get("lap sequences", lapmarkers))
 	{
-		for (unsigned l = 0; l < lapmarkers; l++)
+		for (int l = 0; l < lapmarkers; l++)
 		{
-			std::vector<unsigned> lapraw(2);
+			std::vector<float> lapraw(3);
 			std::ostringstream lapname;
 			lapname << "lap sequence " << l;
 			info.get(lapname.str(), lapraw);
+			int roadid = lapraw[0];
+			int patchid = lapraw[1];
 
-			unsigned roadid = Min(num_roads, lapraw[0]);
-			auto & road = data.roads[roadid];
+			int curroad = 0;
+			for (std::list<RoadStrip>::iterator i = data.roads.begin(); i != data.roads.end(); ++i, ++curroad)
+			{
+				if (curroad == roadid)
+				{
+					int num_patches = i->GetPatches().size();
+					assert(patchid < num_patches);
 
-			unsigned num_patches = road.GetPatches().size();
-			unsigned patchid = Min(num_patches, lapraw[1]);
+					// adjust id for reverse case
+					if (data.reverse)
+						patchid = num_patches - patchid;
 
-			// adjust id for reverse case
-			if (data.reverse)
-				patchid = num_patches - patchid;
-
-			data.lap.push_back(&road.GetPatches()[patchid]);
+					data.lap.push_back(&i->GetPatches()[patchid].GetPatch());
+					break;
+				}
+			}
 		}
 	}
 
@@ -1124,33 +1120,33 @@ bool Track::Loader::LoadLapSections(const PTree & info)
 	{
 		if (data.lap.size() > 1)
 		{
-			// reverse the lap sequence, but keep the first patch where it is (remember, the track is a loop)
+			// reverse the lap sequence, but keep the first bezier where it is (remember, the track is a loop)
 			// so, for example, now instead of 1 2 3 4 we should have 1 4 3 2
-			auto second_patch = data.lap.begin() + 1;
-			assert(second_patch != data.lap.end());
-			std::reverse(second_patch, data.lap.end());
+			std::vector<const Bezier *>::iterator secondbezier = data.lap.begin() + 1;
+			assert(secondbezier != data.lap.end());
+			std::reverse(secondbezier, data.lap.end());
 		}
 
 		// move timing sector 0 back so we'll still drive over it when going in reverse around the track
 		// find patch in front of first start position
-		const RoadPatch * lap0 = 0;
+		const Bezier * lap0 = 0;
 		float minlen2 = 10E6;
 		Vec3 pos = data.start_positions[0].first;
 		Vec3 dir = Direction::Forward;
 		data.start_positions[0].second.RotateVector(dir);
 		Vec3 bpos(pos[1], pos[2], pos[0]);
 		Vec3 bdir(dir[1], dir[2], dir[0]);
-		for (const auto & road : data.roads)
+		for (std::list<RoadStrip>::iterator r = data.roads.begin(); r != data.roads.end(); ++r)
 		{
-			for (const auto & p : road.GetPatches())
+			for (std::vector<RoadPatch>::iterator p = r->GetPatches().begin(); p != r->GetPatches().end(); ++p)
 			{
-				Vec3 vec = p.GetBL() - bpos;
+				Vec3 vec = p->GetPatch().GetBL() - bpos;
 				float len2 = vec.MagnitudeSquared();
 				bool fwd = vec.dot(bdir) > 0;
 				if (fwd && len2 < minlen2)
 				{
 					minlen2 = len2;
-					lap0 = &p;
+					lap0 = &p->GetPatch();
 				}
 			}
 		}
@@ -1161,7 +1157,18 @@ bool Track::Loader::LoadLapSections(const PTree & info)
 	// calculate distance from starting line for each patch to account for those tracks
 	// where starting line is not on the 1st patch of the road
 	// note this only updates the road with lap sequence 0 on it
-	const_cast<RoadPatch*>(data.lap[0])->CalculateDistanceFromStart();
+	Bezier* start_patch = const_cast <Bezier *> (data.lap[0]);
+	start_patch->dist_from_start = 0.0;
+	Bezier* curr_patch = start_patch->next_patch;
+	float total_dist = start_patch->length;
+	int count = 0;
+	while ( curr_patch && curr_patch != start_patch)
+	{
+		count++;
+		curr_patch->dist_from_start = total_dist;
+		total_dist += curr_patch->length;
+		curr_patch = curr_patch->next_patch;
+	}
 
 	info_output << "Track timing sectors: " << lapmarkers << std::endl;
 	return true;

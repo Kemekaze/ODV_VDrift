@@ -18,7 +18,6 @@
 /************************************************************************/
 
 #include "forcefeedback.h"
-#include "minmax.h"
 
 #include <ostream>
 #include <cstring>
@@ -29,6 +28,7 @@ ForceFeedback::ForceFeedback(
 	std::ostream & info_output) :
 	device_name(device),
 	enabled(true),
+	stop_and_play(false),
 	lastforce(0),
 	haptic(0),
 	effect_id(-1)
@@ -101,20 +101,21 @@ ForceFeedback::~ForceFeedback()
 
 void ForceFeedback::update(
 	float force,
-	float /*dt*/,
+	float dt,
 	std::ostream & error_output)
 {
 	if (!enabled || !haptic || (effect_id == -1))
 		return;
 
 	// Clamp force.
-	force = Clamp(force, -1.0f, 1.0f);
+	if (force > 1.0) force = 1.0;
+	if (force < -1.0) force = -1.0;
 
 	// Low pass filter.
-	lastforce = (lastforce + force) * 0.5f;
+	lastforce = (lastforce + force) * 0.5;
 
 	// Update effect.
-	effect.constant.level = Sint16(lastforce * 32767);
+	effect.constant.level = Sint16(lastforce * 32767.0);
 	int new_effect_id = SDL_HapticUpdateEffect(haptic, effect_id, &effect);
 	if (new_effect_id == -1)
 	{

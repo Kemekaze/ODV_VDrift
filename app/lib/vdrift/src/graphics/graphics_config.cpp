@@ -143,11 +143,11 @@ bool readSection(std::istream & f, std::ostream & error_output, int & line, cons
 {
 	int sectionline = line;
 	outputmap = readValuePairs(f, line);
-	for (const auto & var : reqd)
+	for (std::vector <std::string>::const_iterator i = reqd.begin(); i != reqd.end(); i++)
 	{
-		if (outputmap[var].empty())
+		if (outputmap[*i].empty())
 		{
-			error_output << "Variable \"" << var << "\" is required in the section starting at line " << sectionline << std::endl;
+			error_output << "Variable \"" << *i << "\" is required in the section starting at line " << sectionline << std::endl;
 			return false;
 		}
 	}
@@ -196,9 +196,9 @@ bool GraphicsConfigShader::Load(std::istream & f, std::ostream & error_output, i
 	if (!readSection(f, error_output, line, reqd, vars))
 		return false;
 
-	for (const auto & var : vars)
+	for (std::map <std::string, std::string>::const_iterator i = vars.begin(); i != vars.end(); i++)
 	{
-		if (!isOf(var.first, "name fragment vertex defines", &error_output, sectionstart)) return false;
+		if (!isOf(i->first, "name fragment vertex defines", &error_output, sectionstart)) return false;
 	}
 
 	ASSIGNVAR(name);
@@ -275,9 +275,9 @@ bool GraphicsConfigOutput::Load(std::istream & f, std::ostream & error_output, i
 	if (!readSection(f, error_output, line, reqd, vars))
 		return false;
 
-	for (const auto & var : vars)
+	for (std::map <std::string, std::string>::const_iterator i = vars.begin(); i != vars.end(); i++)
 	{
-		if (!isOf(var.first, "name width height type filter format mipmap multisample conditions", &error_output, sectionstart)) return false;
+		if (!isOf(i->first, "name width height type filter format mipmap multisample conditions", &error_output, sectionstart)) return false;
 	}
 
 	// fill in defaults
@@ -355,9 +355,9 @@ bool GraphicsConfigPass::Load(std::istream & f, std::ostream & error_output, int
 	if (!readSection(f, error_output, line, reqd, vars))
 		return false;
 
-	for (const auto & var : vars)
+	for (std::map <std::string, std::string>::const_iterator i = vars.begin(); i != vars.end(); i++)
 	{
-		if (!isOf(var.first, "draw camera light output shader inputs clear_color clear_depth write_color write_alpha write_depth cull conditions blendmode depthtest", &error_output, sectionstart)) return false;
+		if (!isOf(i->first, "draw camera light output shader inputs clear_color clear_depth write_color write_alpha write_depth cull conditions blendmode depthtest", &error_output, sectionstart)) return false;
 	}
 
 	bool postprocess = (vars["draw"] == "postprocess");
@@ -372,7 +372,7 @@ bool GraphicsConfigPass::Load(std::istream & f, std::ostream & error_output, int
 	fillDefault(vars, "write_depth", postprocess ? "false" : "true");
 	fillDefault(vars, "cull", "true");
 	fillDefault(vars, "camera", "default");
-	fillDefault(vars, "blendmode", "disabled");
+	fillDefault(vars, "blendmode", postprocess ? "disabled" : "disabled");
 	fillDefault(vars, "depthtest", postprocess ? "disabled" : "lequal");
 
 	std::string blendmodes = "disabled alphablend add alphablend_premultiplied";

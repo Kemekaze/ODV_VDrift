@@ -20,9 +20,9 @@
 #ifndef _RENDERPASSINFO_H
 #define _RENDERPASSINFO_H
 
+#include "joeserialize.h"
 #include "macros.h"
 
-#include <map>
 #include <string>
 #include <vector>
 #include <set>
@@ -52,8 +52,7 @@ struct RealtimeExportPassInfo
 	{
 		std::vector <float> data;
 
-		template <class Serializer>
-		bool Serialize(Serializer & s)
+		bool Serialize(joeserialize::Serializer & s)
 		{
 			_SERIALIZE_(s,data);
 			return true;
@@ -69,8 +68,7 @@ struct RealtimeExportPassInfo
 		std::vector <int> intdata;
 		std::vector <float> floatdata;
 
-		template <class Serializer>
-		bool Serialize(Serializer & s)
+		bool Serialize(joeserialize::Serializer & s)
 		{
 			_SERIALIZE_(s,type);
 			_SERIALIZE_(s,enumdata);
@@ -96,8 +94,7 @@ struct RealtimeExportPassInfo
 		float width, height;
 		bool widthHeightAreMultiples;
 
-		template <class Serializer>
-		bool Serialize(Serializer & s)
+		bool Serialize(joeserialize::Serializer & s)
 		{
 			_SERIALIZE_(s,name);
 			_SERIALIZE_(s,variable);
@@ -118,8 +115,7 @@ struct RealtimeExportPassInfo
 		std::string textureName;
 		std::map <std::string, RenderState> state;
 
-		template <class Serializer>
-		bool Serialize(Serializer & s)
+		bool Serialize(joeserialize::Serializer & s)
 		{
 			_SERIALIZE_(s,textureName);
 			_SERIALIZE_(s,state);
@@ -128,8 +124,7 @@ struct RealtimeExportPassInfo
 	};
 	std::map <std::string, Sampler> samplers;
 
-	template <class Serializer>
-	bool Serialize(Serializer & s)
+	bool Serialize(joeserialize::Serializer & s)
 	{
 		_SERIALIZE_(s,name);
 		_SERIALIZE_(s,clearColor);

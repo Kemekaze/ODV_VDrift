@@ -18,7 +18,6 @@
 /************************************************************************/
 
 #include "guioption.h"
-#include "minmax.h"
 #include <sstream>
 
 static const std::string null;
@@ -103,17 +102,17 @@ void GuiOption::SetCurrentValue(const std::string & value)
 	else
 	{
 		size_t current_value = 0;
-		for (const auto & v : m_values)
+		for (List::iterator i = m_values.begin(); i != m_values.end(); ++i)
 		{
 			if (IsFloat())
 			{
 				// number of trailing zeros might differ, use min match
-				size_t len = Min(v.first.length(), value.length());
-				if (!v.first.compare(0, len, value, 0, len)) break;
+				size_t len = std::min(i->first.length(), value.length());
+				if (!i->first.compare(0, len, value, 0, len)) break;
 			}
 			else
 			{
-				if (v.first == value) break;
+				if (i->first == value) break;
 			}
 			++current_value;
 		}
@@ -317,7 +316,7 @@ void GuiOption::SetCurrentValueNorm(const std::string & value)
 void GuiOption::GetDisplayValues(int offset, std::vector<std::string> & vals)
 {
 	// clamp offset
-	size_t noffset = Max(offset, 0);
+	size_t noffset = (offset < 0) ? 0 : offset;
 
 	// get values
 	size_t n = 0;
@@ -332,7 +331,7 @@ void GuiOption::GetDisplayValues(int offset, std::vector<std::string> & vals)
 void GuiOption::GetStorageValues(int offset, std::vector<std::string> & vals)
 {
 	// clamp offset
-	size_t noffset = Max(offset, 0);
+	size_t noffset = (offset < 0) ? 0 : offset;
 
 	// get values
 	size_t n = 0;

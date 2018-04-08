@@ -25,11 +25,24 @@
 
 #include <fstream>
 
+class Track;
+class RoadPatch;
+
 class Bezier
 {
+friend class Track;
+friend class RoadPatch;
+
 public:
-	Bezier() {};
-	~Bezier() {};
+	Bezier();
+	~Bezier();
+	Bezier(const Bezier & other) {CopyFrom(other);}
+	Bezier & operator=(const Bezier & other) {return CopyFrom(other);}
+	Bezier & CopyFrom(const Bezier &other);
+
+	float GetDistFromStart() const {return dist_from_start;}
+	void ResetDistFromStart() {dist_from_start = 0.0f;}
+	void ResetNextPatch() {next_patch = NULL;}
 
 	///initialize this bezier to the quad defined by the given corner points
 	void SetFromCorners(const Vec3 & fl, const Vec3 & fr, const Vec3 & bl, const Vec3 & br);
@@ -41,6 +54,11 @@ public:
 	///shortest cubic spline through 3 on-curve points(p1 == p2)
 	///will modify point[1] and point[2]
 	void FitMidPoint(Vec3 p[]);
+
+	///attach this bezier and the other bezier by moving them and adjusting control points as necessary.
+	/// note that the other patch will be modified
+	void Attach(Bezier & other, bool reverse);
+	void Attach(Bezier & other) {Attach(other, false);}
 
 	///return true if the ray starting at the given origin going in the given direction intersects this bezier.
 	/// output the contact point and normal to the given outtri and normal variables.
@@ -92,9 +110,27 @@ public:
 	///return the normal of the bezier surface at the given normalized coordinates px and py
 	Vec3 SurfNorm(float px, float py) const;
 
-private:
-	Vec3 points[4][4];
+	Bezier* GetNextPatch() const
+	{
+		return next_patch;
+	}
 
+	Vec3 GetRacingLine() const
+	{
+		return racing_line;
+	}
+
+	float GetTrackRadius() const
+	{
+		return track_radius;
+	}
+
+	bool HasRacingline() const
+	{
+		return have_racingline;
+	}
+
+private:
 	///return the bernstein given the normalized coordinate u (zero to one) and an array of four points p
 	Vec3 Bernstein(float u, const Vec3 p[]) const;
 
@@ -111,6 +147,19 @@ private:
 		const Vec3 & v_11,
 		const Vec3 & v_01,
 		float &t, float &u, float &v) const;
+
+	Vec3 points[4][4];
+	Vec3 center;
+	float radius;
+	float length;
+	float dist_from_start;
+
+	Bezier *next_patch;
+	float track_radius;
+	int turn; //-1 - this is a left turn, +1 - a right turn, 0 - straight
+	float track_curvature;
+	Vec3 racing_line;
+	bool have_racingline;
 };
 
 std::ostream & operator << (std::ostream &os, const Bezier & b);

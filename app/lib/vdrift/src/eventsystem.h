@@ -32,6 +32,16 @@
 class EventSystem
 {
 public:
+	class ButtonState
+	{
+	public:
+		bool down; 	//button is down (false for up)
+		bool just_down; //button was just pressed
+		bool just_up;	//button was just released
+
+		ButtonState() : down(false), just_down(false), just_up(false) {}
+	};
+
 	class Joystick
 	{
 		public:
@@ -69,9 +79,9 @@ public:
 
 			void AgeToggles()
 			{
-				for (auto & b : button)
+				for (std::vector <Toggle>::iterator i = button.begin(); i != button.end(); ++i)
 				{
-					b.Tick();
+					i->Tick();
 				}
 			}
 
@@ -125,9 +135,9 @@ public:
 
 	void ProcessEvents();
 
-	Toggle GetMouseButtonState(int id) const { return GetToggle(mbutmap, id); }
+	ButtonState GetMouseButtonState(int id) const;
 
-	Toggle GetKeyState(SDL_Keycode id) const { return GetToggle(keymap, id); }
+	ButtonState GetKeyState(SDL_Keycode id) const;
 
 	std::map <SDL_Keycode, Toggle> & GetKeyMap() {return keymap;}
 
@@ -230,24 +240,30 @@ private:
 	void AgeToggles(std::map <T, Toggle> & togglemap)
 	{
 		std::list <typename std::map<T, Toggle>::iterator> todel;
-		for (auto i = togglemap.begin(); i != togglemap.end(); ++i)
+		for (typename std::map <T, Toggle>::iterator i = togglemap.begin(); i != togglemap.end(); ++i)
 		{
 			i->second.Tick();
 			if (!i->second.GetState() && !i->second.GetImpulseFalling())
 				todel.push_back(i);
 		}
 
-		for (auto i : todel)
-			togglemap.erase(i);
+		for (typename std::list <typename std::map<T, Toggle>::iterator>::iterator i = todel.begin(); i != todel.end(); ++i)
+			togglemap.erase(*i);
 	}
 
 	template <class T>
-	Toggle GetToggle(const std::map <T, Toggle> & togglemap, const T & id) const
+	ButtonState GetToggle(const std::map <T, Toggle> & togglemap, const T & id) const
 	{
-		auto i = togglemap.find(id);
+		ButtonState s;
+		s.down = s.just_down = s.just_up = false;
+		typename std::map <T, Toggle>::const_iterator i = togglemap.find(id);
 		if (i != togglemap.end())
-			return i->second;
-		return Toggle();
+		{
+			s.down = i->second.GetState();
+			s.just_down = i->second.GetImpulseRising();
+			s.just_up = i->second.GetImpulseFalling();
+		}
+		return s;
 	}
 };
 

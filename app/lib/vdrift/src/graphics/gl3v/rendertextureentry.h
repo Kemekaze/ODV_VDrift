@@ -25,9 +25,8 @@
 
 struct RenderTextureBase
 {
-	RenderTextureBase() {};
-	RenderTextureBase(GLuint newhandle, GLenum newtarget) :
-		handle(newhandle), target(newtarget) {};
+	RenderTextureBase();
+	RenderTextureBase(GLuint newhandle, GLenum newtarget);
 
 	GLuint handle;
 	GLenum target;
@@ -35,9 +34,8 @@ struct RenderTextureBase
 
 struct RenderTextureEntry : public RenderTextureBase
 {
-	RenderTextureEntry() {};
-	RenderTextureEntry(StringId newname, GLuint newhandle, GLenum newtarget) :
-		 RenderTextureBase(newhandle,newtarget), name(newname) {};
+	RenderTextureEntry();
+	RenderTextureEntry(StringId newname, GLuint newhandle, GLenum newtarget);
 
 	StringId name;
 };

@@ -35,6 +35,20 @@ std::ostream & operator << (std::ostream &os, const Bezier & b)
 	return os;
 }
 
+Bezier::Bezier()
+{
+	next_patch = NULL;
+	turn = 0;
+	dist_from_start = 0.0;
+	length = 0.0;
+	have_racingline = false;
+}
+
+Bezier::~Bezier()
+{
+ // dtor
+}
+
 Aabb <float> Bezier::GetAABB() const
 {
 	float maxv[3] = {-1E38, -1E38, -1E38};
@@ -62,27 +76,67 @@ Aabb <float> Bezier::GetAABB() const
 
 void Bezier::SetFromCorners(const Vec3 & fl, const Vec3 & fr, const Vec3 & bl, const Vec3 & br)
 {
-	// assign corners
+	Vec3 temp;
+
+	center = fl + fr + bl + br;
+	center = center*0.25;
+	radius = 0;
+	if ((fl - center).Magnitude() > radius)
+		radius = (fl - center).Magnitude();
+	if ((fr - center).Magnitude() > radius)
+		radius = (fr - center).Magnitude();
+	if ((bl - center).Magnitude() > radius)
+		radius = (bl - center).Magnitude();
+	if ((br - center).Magnitude() > radius)
+		radius = (br - center).Magnitude();
+
+	//assign corners
 	points[0][0] = fl;
 	points[0][3] = fr;
-	points[3][0] = bl;
 	points[3][3] = br;
+	points[3][0] = bl;
 
-	// calculate intermediate front and back points
-	Vec3 t = (fr - fl) * (1/3.f);
-	points[0][1] = fl + t;
-	points[0][2] = fr - t;
-
-	t = (br - bl) * (1/3.f);
-	points[3][1] = bl + t;
-	points[3][2] = br - t;
-
-	// calculate intermediate left and right points
-	for (int i = 0; i < 4; i++)
+	//calculate intermediate front and back points
+	temp = fr - fl;
+	if (temp.Magnitude() < 0.0001)
 	{
-		t = (points[3][i] - points[0][i]) * (1/3.f);
-		points[1][i] = points[0][i] + t;
-		points[2][i] = points[3][i] - t;
+		points[0][1] = fl;
+		points[0][2] = fl;
+	}
+	else
+	{
+		points[0][1] = fl + temp.Normalize()*(temp.Magnitude()/3.0);
+		points[0][2] = fl + temp.Normalize()*(2.0*temp.Magnitude()/3.0);
+	}
+
+	temp = br - bl;
+	if (temp.Magnitude() < 0.0001)
+	{
+		points[3][1] = bl;
+		points[3][2] = bl;
+	}
+	else
+	{
+		points[3][1] = bl + temp.Normalize()*(temp.Magnitude()/3.0);
+		points[3][2] = bl + temp.Normalize()*(2.0*temp.Magnitude()/3.0);
+	}
+
+
+	//calculate intermediate left and right points
+	int i;
+	for (i = 0; i < 4; i++)
+	{
+		temp = points[3][i] - points[0][i];
+		if (temp.Magnitude() > 0.0001)
+		{
+			points[1][i] = points[0][i] + temp.Normalize()*(temp.Magnitude()/3.0);
+			points[2][i] = points[0][i] + temp.Normalize()*(2.0*temp.Magnitude()/3.0);
+		}
+		else
+		{
+			points[1][i] = points[0][i];
+			points[2][i] = points[0][i];
+		}
 	}
 
 	//CheckForProblems();
@@ -115,11 +169,11 @@ void Bezier::FitSpline(Vec3 p[])
 	// cases where p[1] is close to p[2] might lead to instabilities(need some heuristic)
 	if (50 * c2 < c1 + c3)
 	{
-		p[1] = p[0] + (p[1] - p[0]) * 0.98f;
-		p[2] = p[3] + (p[2] - p[3]) * 0.98f;
-		c3 = c3 * 0.98f;
+		p[1] = p[0] + (p[1] - p[0]) * 0.98;
+		p[2] = p[3] + (p[2] - p[3]) * 0.98;
+		c3 = c3 * 0.98;
 		c2 = (p[2] - p[1]).Magnitude();
-		c1 = c1 * 0.98f;
+		c1 = c1 * 0.98;
 	}
 
 	float t1 = c1 / (c1 + c2 + c3);
@@ -132,7 +186,7 @@ void Bezier::FitSpline(Vec3 p[])
 	float m11 = B2(t2);
 
 	float detM = m00 * m11 - m01 * m10;
-	if (std::abs(detM) > 1E-3f)
+	if (fabs(detM) > 1E-3)
 	{
 		// y = p - p0 * B0(t) - p3 * B3(t)
 		Vec3 y1 = p[1] - p[0] * B0(t1) - p[3] * B3(t1);
@@ -180,7 +234,7 @@ void Bezier::FitMidPoint(Vec3 p[])
 	// extrude along midpoint normal
 	// nm = p0 * N0 + pm * (N1 + N2) + p3 * N3 with  pm = p1 + nm * s
 	Vec3 nm = (d2 - d3).Normalize();
-	Vec3 y = nm * (1/6.f) + p[1] - p[3];
+	Vec3 y = nm / 6.0 + p[1] - p[3];
 	Vec3 a = p[0] - p[3];
 	Vec3 b = -nm;
 
@@ -189,7 +243,7 @@ void Bezier::FitMidPoint(Vec3 p[])
 	// x = Minv * y
 	float s;//, t;
 	Vec3 det = a.cross(b);
-	if (det[0] != 0)
+	if (det[0] != 0.0)
 	{
 		float m00 = a[1];
 		//float m01 = b[1];
@@ -197,7 +251,7 @@ void Bezier::FitMidPoint(Vec3 p[])
 		//float m11 = b[2];
 
 		// Minv
-		float d = 1 / det[0];
+		float d = 1.0 / det[0];
 		//float n00 = d * m11;
 		//float n01 = -d * m01;
 		float n10 = -d * m10;
@@ -207,15 +261,15 @@ void Bezier::FitMidPoint(Vec3 p[])
 		//t = y[1] * n00 + y[2] * n01; // need s only
 		s = y[1] * n10 + y[2] * n11;
 	}
-	else if (det[1] != 0)
+	else if (det[1] != 0.0)
 	{
 		//m00 = a[2]; m01 = b[2]; m10 = a[0]; m11 = b[0];
-		s = 1 / det[1] * (-y[2] * a[0] + y[0] * a[2]);
+		s = 1.0 / det[1] * (-y[2] * a[0] + y[0] * a[2]);
 	}
-	else if (det[2] != 0)
+	else if (det[2] != 0.0)
 	{
 		//m00 = a[0]; m01 = b[0]; m10 = a[1]; m11 = b[1];
-		s = 1 / det[2] * (-y[0] * a[1] + y[1] * a[0]);
+		s = 1.0 / det[2] * (-y[0] * a[1] + y[1] * a[0]);
 	}
 	else
 	{
@@ -226,6 +280,88 @@ void Bezier::FitMidPoint(Vec3 p[])
 
 	p[1] = pm;
 	p[2] = pm;
+}
+
+void Bezier::Attach(Bezier & other, bool reverse)
+{
+	/*if (!reverse)
+	{
+		//move the other patch to the location of this patch and force its
+		// intermediate points into a nice grid layout
+		other.SetFromCorners(other.points[0][0], other.points[0][3], points[0][0], points[0][3]);
+
+		for (int x = 0; x < 4; x++)
+		{
+			//slope points in the forward direction
+			Vec3 slope = other.points[0][x] - points[3][x];
+			if (slope.Magnitude() > 0.0001)
+				slope = slope.Normalize();
+
+			float otherlen = (other.points[0][x] - other.points[3][x]).Magnitude();
+			float mylen = (points[0][x] - points[3][x]).Magnitude();
+
+			float meanlen = (otherlen + mylen)/2.0;
+			float leglen = meanlen / 3.0;
+
+			if (slope.Magnitude() > 0.0001)
+			{
+				other.points[2][x] = other.points[3][x] + slope*leglen;
+				points[1][x] = points[0][x] + slope*(-leglen);
+			}
+			else
+			{
+				other.points[2][x] = other.points[3][x];
+				points[1][x] = points[0][x];
+			}
+		}
+	}*/
+
+	//CheckForProblems();
+
+	//store the pointer to next patch
+	next_patch = &other;
+
+	//calculate the track radius at the connection of this patch and next patch
+	Vec3 a = SurfCoord(0.5,0.0);
+	Vec3 b = SurfCoord(0.5,1.0);
+	Vec3 c = other.SurfCoord(0.5,1.0);
+
+	if (reverse)
+	{
+		a = SurfCoord(0.5,1.0);
+		b = SurfCoord(0.5,0.0);
+		c = other.SurfCoord(0.5,0.0);
+
+		//Reverse();
+	}
+
+	//racing_line = a;
+	Vec3 d1 = a - b;
+	Vec3 d2 = c - b;
+	float diff = d2.Magnitude() - d1.Magnitude();
+	double dd = ((d1.Magnitude() < 0.0001) || (d2.Magnitude() < 0.0001)) ? 0.0 : d1.Normalize().dot(d2.Normalize());
+	float angle = acos((dd>=1.0L)?1.0L:(dd<=-1.0L)?-1.0L:dd);
+	float d1d2mag = d1.Magnitude() + d2.Magnitude();
+	float alpha = (d1d2mag < 0.0001) ? 0.0f : (M_PI * diff + 2.0 * d1.Magnitude() * angle) / d1d2mag / 2.0;
+	if (fabs(alpha - M_PI/2.0) < 0.001) track_radius = 10000.0;
+	else track_radius = d1.Magnitude() / 2.0 / cos(alpha);
+	if (d1.Magnitude() < 0.0001)
+		track_curvature = 0.0;
+	else
+		track_curvature = 2.0 * cos(alpha) / d1.Magnitude();
+
+	//determine it's a left or right turn at the connection
+	Vec3 d = d1.cross(d2);
+	if (fabs(d[0]) < 0.1 && fabs(d[1]) < 0.1 && fabs(d[2]) < 0.1)
+	{
+		turn = 0; //straight ahead
+	}
+	else if (d[1] > 0.0) turn = -1; //left turn ahead
+	else turn = 1; //right turn ahead
+
+	//calculate distance from start of the road
+	if (other.next_patch == NULL || reverse) other.dist_from_start = dist_from_start + d1.Magnitude();
+	length = d1.Magnitude();
 }
 
 void Bezier::Reverse()
@@ -243,7 +379,7 @@ void Bezier::Reverse()
 
 Vec3 Bezier::Bernstein(float u, const Vec3 p[]) const
 {
-	float oneminusu = 1-u;
+	float oneminusu(1.0f-u);
 	Vec3 a = p[0]*(u*u*u);
 	Vec3 b = p[1]*(3*u*u*oneminusu);
 	Vec3 c = p[2]*(3*u*oneminusu*oneminusu);
@@ -253,7 +389,7 @@ Vec3 Bezier::Bernstein(float u, const Vec3 p[]) const
 
 Vec3 Bezier::BernsteinTangent(float u, const Vec3 p[]) const
 {
-	float oneminusu = 1-u;
+	float oneminusu(1.0f-u);
 	Vec3 a = (p[1]-p[0])*(3*u*u);
 	Vec3 b = (p[2]-p[1])*(3*2*u*oneminusu);
 	Vec3 c = (p[3]-p[2])*(3*oneminusu*oneminusu);
@@ -299,6 +435,30 @@ Vec3 Bezier::SurfNorm(float px, float py) const
 	Vec3 n = -tx.cross(ty).Normalize();
 
 	return n;
+}
+
+Bezier & Bezier::CopyFrom(const Bezier &other)
+{
+	for (int x = 0; x < 4; x++)
+	{
+		for (int y = 0; y < 4; y++)
+		{
+			points[x][y] = other.points[x][y];
+		}
+	}
+
+	center = other.center;
+	radius = other.radius;
+	length = other.length;
+	dist_from_start = other.dist_from_start;
+	next_patch = other.next_patch;
+	track_radius = other.track_radius;
+	turn = other.turn;
+	track_curvature = other.track_curvature;
+	racing_line = other.racing_line;
+	have_racingline = other.have_racingline;
+
+	return *this;
 }
 
 void Bezier::ReadFrom(std::istream &openfile)
@@ -357,7 +517,7 @@ bool Bezier::CollideSubDivQuadSimpleNorm(const Vec3 & origin, const Vec3 & direc
 {
 	bool col = false;
 	const int COLLISION_QUAD_DIVS = 6;
-	const float areacut = 0.5f;
+	const float areacut = 0.5;
 
 	float t, u, v;
 
@@ -415,10 +575,10 @@ bool Bezier::CollideSubDivQuadSimpleNorm(const Vec3 & origin, const Vec3 & direc
 			sv = v * (tv[1] - tv[0]) + tv[0];
 
 			//place max and min according to area hit
-			vmax = sv + (0.5f*areacut)*(vmax - vmin);
-			vmin = sv - (0.5f*areacut)*(vmax - vmin);
-			umax = su + (0.5f*areacut)*(umax - umin);
-			umin = su - (0.5f*areacut)*(umax - umin);
+			vmax = sv + (0.5*areacut)*(vmax - vmin);
+			vmin = sv - (0.5*areacut)*(vmax - vmin);
+			umax = su + (0.5*areacut)*(umax - umin);
+			umin = su - (0.5*areacut)*(umax - umin);
 		}
 		else
 		{
@@ -435,15 +595,15 @@ bool Bezier::CollideSubDivQuadSimpleNorm(const Vec3 & origin, const Vec3 & direc
 void Bezier::DeCasteljauHalveCurve(Vec3 * points4, Vec3 * left4, Vec3 * right4) const
 {
 	left4[0] = points4[0];
-	left4[1] = (points4[0]+points4[1])*0.5f;
-	Vec3 point23 = (points4[1]+points4[2])*0.5f;
+	left4[1] = (points4[0]+points4[1])*0.5;
+	Vec3 point23 = (points4[1]+points4[2])*0.5;
 	left4[2] = (left4[1]+point23)*0.5;
 
 	right4[3] = points4[3];
-	right4[2] = (points4[3]+points4[2])*0.5f;
-	right4[1] = (right4[2]+point23)*0.5f;
+	right4[2] = (points4[3]+points4[2])*0.5;
+	right4[1] = (right4[2]+point23)*0.5;
 
-	left4[3] = right4[0] = (right4[1]+left4[2])*0.5f;
+	left4[3] = right4[0] = (right4[1]+left4[2])*0.5;
 }
 
 bool Bezier::CheckForProblems() const
@@ -466,11 +626,11 @@ bool Bezier::CheckForProblems() const
 		Vec3 dir2 = leg1.cross(leg3);
 		Vec3 dir3 = leg2.cross(leg3);
 
-		if (dir1.dot(dir2) < -1E-4f)
+		if (dir1.dot(dir2) < -0.0001)
 			problem = true;
-		if (dir1.dot(dir3) < -1E-4f)
+		if (dir1.dot(dir3) < -0.0001)
 			problem = true;
-		if (dir3.dot(dir2) < -1E-4f)
+		if (dir3.dot(dir2) < -0.0001)
 			problem = true;
 
 		/*if (problem)
@@ -499,7 +659,7 @@ bool Bezier::IntersectQuadrilateralF(
 	const Vec3 & v_11, const Vec3 & v_01,
 	float &t, float &u, float &v) const
 {
-	const float EPSILON = 1E-6f;
+	const float EPSILON = 0.000001;
 
 	// Reject rays that are parallel to Q, and rays that intersect the plane
 	// of Q either on the left of the line V00V01 or below the line V00V10.
@@ -513,14 +673,14 @@ bool Bezier::IntersectQuadrilateralF(
 	Vec3 T = orig - v_00;
 	float alpha = T.dot(P) / det;
 
-	if (alpha < 0) return false;
+	if (alpha < 0.0) return false;
 
 	Vec3 Q = T.cross(E_01);
 	float beta = dir.dot(Q) / det;
 
-	if (beta < 0) return false;
+	if (beta < 0.0) return false;
 
-	if (alpha + beta > 1)
+	if (alpha + beta > 1.0)
 	{
 		// Reject rays that that intersect the plane of Q either on
 		// the right of the line V11V10 or above the line V11V00.
@@ -534,19 +694,19 @@ bool Bezier::IntersectQuadrilateralF(
 		Vec3 T_prime = orig - v_11;
 		float alpha_prime = T_prime.dot(P_prime) / det_prime;
 
-		if (alpha_prime < 0) return false;
+		if (alpha_prime < 0.0) return false;
 
 		Vec3 Q_prime = T_prime.cross(E_23);
 		float beta_prime = dir.dot(Q_prime) / det_prime;
 
-		if (beta_prime < 0) return false;
+		if (beta_prime < 0.0) return false;
 	}
 
 	// Compute the ray parameter of the intersection point, and
 	// reject the ray if it does not hit Q.
 	t = E_03.dot(Q) / det;
 
-	if (t < 0) return false;
+	if (t < 0.0) return false;
 
 	// Compute the barycentric coordinates of the fourth vertex.
 	// These do not depend on the ray, and can be precomputed
@@ -558,50 +718,52 @@ bool Bezier::IntersectQuadrilateralF(
 	if ((std::abs(n[0]) >= std::abs(n[1]))
 		    && (std::abs(n[0]) >= std::abs(n[2])))
 	{
-		alpha_11 = (E_02[1] * E_03[2] - E_02[2] * E_03[1]) / n[0];
-		beta_11 = (E_01[1] * E_02[2] - E_01[2] * E_02[1]) / n[0];
+		alpha_11 = ((E_02[1] * E_03[2]) - (E_02[2] * E_03[1])) / n[0];
+		beta_11 = ((E_01[1] * E_02[2]) - (E_01[2]  * E_02[1])) / n[0];
 	}
 	else if ((std::abs(n[1]) >= std::abs(n[0]))
 			 && (std::abs(n[1]) >= std::abs(n[2])))
 	{
-		alpha_11 = (E_02[2] * E_03[0] - E_02[0] * E_03[2]) / n[1];
-		beta_11 = (E_01[2] * E_02[0] - E_01[0] * E_02[2]) / n[1];
+		alpha_11 = ((E_02[2] * E_03[0]) - (E_02[0] * E_03[2])) / n[1];
+		beta_11 = ((E_01[2] * E_02[0]) - (E_01[0]  * E_02[2])) / n[1];
 	}
 	else
 	{
-		alpha_11 = (E_02[0] * E_03[1] - E_02[1] * E_03[0]) / n[2];
-		beta_11 = (E_01[0] * E_02[1] - E_01[1] * E_02[0]) / n[2];
+		alpha_11 = ((E_02[0] * E_03[1]) - (E_02[1] * E_03[0])) / n[2];
+		beta_11 = ((E_01[0] * E_02[1]) - (E_01[1]  * E_02[0])) / n[2];
 	}
 
 	// Compute the bilinear coordinates of the intersection point.
-	if (std::abs(alpha_11 - 1) < EPSILON)
+	if (std::abs(alpha_11 - (1.0)) < EPSILON)
 	{
 		// Q is a trapezium.
 		u = alpha;
-		if (std::abs(beta_11 - 1) < EPSILON) v = beta; // Q is a parallelogram.
-		else v = beta / (u * (beta_11 - 1) + 1); // Q is a trapezium.
+		if (std::abs(beta_11 - (1.0)) < EPSILON) v = beta; // Q is a parallelogram.
+		else v = beta / ((u * (beta_11 - (1.0))) + (1.0)); // Q is a trapezium.
 	}
-	else if (std::abs(beta_11 - 1) < EPSILON)
+	else if (std::abs(beta_11 - (1.0)) < EPSILON)
 	{
 		// Q is a trapezium.
 		v = beta;
-		if ((v * (alpha_11 - 1) + 1) == 0)
+		if ( ((v * (alpha_11 - (1.0))) + (1.0)) == 0 )
 		{
 			return false;
 		}
-		u = alpha / (v * (alpha_11 - 1) + 1);
+		u = alpha / ((v * (alpha_11 - (1.0))) + (1.0));
 	}
 	else
 	{
-		float A = 1 - beta_11;
-		float B = alpha * (beta_11 - 1) - beta * (alpha_11 - 1) - 1;
+		float A = (1.0) - beta_11;
+		float B = (alpha * (beta_11 - (1.0)))
+				- (beta * (alpha_11 - (1.0))) - (1.0);
 		float C = alpha;
-		float D = B * B - 4 * A * C;
+		float D = (B * B) - ((4.0) * A * C);
 		if (D < 0) return false;
-		float Q = -0.5f * (B + ((B < 0 ? -1 : 1) * std::sqrt(D)));
+		float Q = (-0.5) * (B + ((B < (0.0) ? (-1.0) : (1.0))
+				* std::sqrt(D)));
 		u = Q / A;
-		if ((u < 0) || (u > 1)) u = C / Q;
-		v = beta / (u * (beta_11 - 1) + 1);
+		if ((u < (0.0)) || (u > (1.0))) u = C / Q;
+		v = beta / ((u * (beta_11 - (1.0))) + (1.0));
 	}
 
 	return true;

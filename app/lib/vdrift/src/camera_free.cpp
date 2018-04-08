@@ -32,7 +32,7 @@ CameraFree::CameraFree(const std::string & name) :
 void CameraFree::SetOffset(const Vec3 & value)
 {
 	offset = value;
-	if (offset.dot(Direction::Forward) < 1E-3f)
+	if (offset.dot(Direction::Forward) < 0.001)
 	{
 		offset = offset - Direction::Forward;
 	}
@@ -48,7 +48,9 @@ void CameraFree::Reset(const Vec3 & newpos, const Quat & newquat)
 
 void CameraFree::Rotate(float up, float left)
 {
-	updown_rotation = Clamp(updown_rotation + up, -1.0f, 1.0f);
+	updown_rotation += up;
+	if (updown_rotation > 1.0) updown_rotation = 1.0;
+	if (updown_rotation <-1.0) updown_rotation =-1.0;
 	leftright_rotation += left;
 
 	rotation.LoadIdentity();

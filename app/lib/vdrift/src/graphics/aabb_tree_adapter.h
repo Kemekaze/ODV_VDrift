@@ -33,11 +33,11 @@ public:
 
 	void push_back(T * drawable)
 	{
-		Aabb<float> box;
-		if (drawable->GetModel() && drawable->GetTransform().IsIdentity())
-			box = drawable->GetModel()->GetAabb();
-		else
-			box.SetFromSphere(drawable->GetCenter(), drawable->GetRadius());
+		Vec3 objpos(drawable->GetObjectCenter());
+		drawable->GetTransform().TransformVectorOut(objpos[0],objpos[1],objpos[2]);
+		float radius = drawable->GetRadius();
+		Aabb <float> box;
+		box.SetFromSphere(objpos, radius);
 		spacetree.Add(drawable, box);
 	}
 

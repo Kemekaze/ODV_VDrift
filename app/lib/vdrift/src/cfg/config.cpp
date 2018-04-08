@@ -212,14 +212,14 @@ bool Config::processLine(Config::iterator & section, std::string & linestr)
 				std::string child = section_name.substr(n+1);
 
 				/*
-				auto parent_iter = sections.find(parent);
+				SECTIONMAP::const_iterator parent_iter = sections.find(parent);
 				if (!SUPPRESS_ERROR && (parent_iter == sections.end()))
 				{
 					std::cout << "warning: parent section " << parent << " doesn't exist. adding an empty one." << std::endl;
 					return false;
 				}
 
-				auto child_iter = parent_iter->second.find(child);
+				Section::const_iterator child_iter = parent_iter->second.find(child);
 				if (!SUPPRESS_ERROR && (child_iter != parent_iter->second.end()))
 				{
 					std::cout << "child already exists, this must be a duplicate section. error" << std::endl;
@@ -229,7 +229,7 @@ bool Config::processLine(Config::iterator & section, std::string & linestr)
 				sections[parent][child] = section_name;
 			}
 			/*
-			auto already_exists = sections.find(section_name);
+			SECTIONMAP::const_iterator already_exists = sections.find(section_name);
 			if (!SUPPRESS_ERROR && (already_exists != sections.end()))
 			{
 				std::cout << "section " << section_name << " already exists, duplicate section in the file, error" << std::endl;
@@ -248,17 +248,17 @@ bool Config::processLine(Config::iterator & section, std::string & linestr)
 
 void Config::print(std::ostream & out, bool with_brackets) const
 {
-	for (const auto & s : sections)
+	for (const_iterator im = sections.begin(); im != sections.end(); ++im)
 	{
-		if (!s.first.empty())
+		if (!im->first.empty())
 		{
-			std::string sectionname = s.first;
+			std::string sectionname = im->first;
 			if (with_brackets) out << "[" << sectionname << "]" << std::endl;
 			else out << sectionname << std::endl;
 		}
-		for (const auto & p : s.second)
+		for (Section::const_iterator is = im->second.begin(); is != im->second.end(); ++is)
 		{
-			out << p.first << " = " << p.second << std::endl;
+			out << is->first << " = " << is->second << std::endl;
 		}
 		out << std::endl;
 	}
@@ -324,7 +324,7 @@ QT_TEST(configfile_test)
 	//testconfig.Print(std::cout);
 
 	{
-		auto i = testconfig.begin();
+		Config::const_iterator i = testconfig.begin();
 		QT_CHECK_EQUAL(i->first, "");
 		i++;
 		QT_CHECK_EQUAL(i->first, "section    dos??");
@@ -377,17 +377,17 @@ QT_TEST(config_include)
 	QT_CHECK(cfg_verify_file_loaded);
 	if (!(cfg_test_file_loaded && cfg_verify_file_loaded)) return;
 
-	for (const auto & s : cfg_verify)
+	for (Config::const_iterator s = cfg_verify.begin(); s != cfg_verify.end(); ++s)
 	{
 		Config::const_iterator ts;
-		QT_CHECK(cfg_test.get(s.first, ts, error));
+		QT_CHECK(cfg_test.get(s->first, ts, error));
 		if (ts == cfg_test.end()) continue;
 
-		for (const auto & p : s.second)
+		for (Config::Section::const_iterator p = s->second.begin(); p != s->second.end(); ++p)
 		{
 			std::string value;
-			QT_CHECK(cfg_test.get(ts, p.first, value, error));
-			QT_CHECK(p.second == value);
+			QT_CHECK(cfg_test.get(ts, p->first, value, error));
+			QT_CHECK(p->second == value);
 		}
 	}
 }

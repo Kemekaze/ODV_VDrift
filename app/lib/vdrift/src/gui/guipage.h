@@ -38,7 +38,7 @@ class ContentManager;
 class PathManager;
 
 typedef std::map<std::string, Signal1<const std::string &>*> StrSignalMap;
-typedef std::map<std::string, Slot2<int, std::vector<std::string> &>*> StrVecSlotMap;
+typedef std::map<std::string, Slot2<int, std::vector<std::string> &>*> StrVecSlotlMap;
 typedef std::map<std::string, Slot1<const std::string &>*> StrSlotMap;
 typedef std::map<std::string, Slot1<int>*> IntSlotMap;
 typedef std::map<std::string, Slot0*> SlotMap;
@@ -56,17 +56,18 @@ public:
 		const float screenhwratio,
 		const GuiLanguage & lang,
 		const Font & font,
-		const StrSignalMap & vsignalmap,
-		const StrVecSlotMap & vnactionmap,
+		StrSignalMap vsignalmap,
+		const StrVecSlotlMap & vnactionmap,
 		const StrSlotMap & vactionmap,
 		IntSlotMap nactionmap,
 		SlotMap actionmap,
+		SceneNode & parentnode,
 		ContentManager & content,
 		std::ostream & error_output);
 
-	void SetVisible(bool value);
+	void SetVisible(SceneNode & parent, bool value);
 
-	void SetAlpha(float value);
+	void SetAlpha(SceneNode & parent, float value);
 
 	/// execute game actions and update gui options
 	void ProcessInput(
@@ -77,21 +78,21 @@ public:
 		bool select, bool cancel);
 
 	/// tell all child widgets to do as update tick
-	void Update(float dt);
+	void Update(SceneNode & parent, float dt);
 
 	void SetLabelText(const std::map<std::string, std::string> & label_text);
 
 	GuiLabel * GetLabel(const std::string & name);
 
-	SceneNode & GetNode();
+	SceneNode & GetNode(SceneNode & parentnode);
 
 private:
 	std::map <std::string, GuiLabel *> labels;
-	std::vector <GuiControl *> controls;
-	std::vector <GuiWidget *> widgets;
-	GuiControl * default_control;
-	GuiControl * active_control;
-	SceneNode node;
+	std::vector <GuiControl *> controls;			// active widgets (process input)
+	std::vector <GuiWidget *> widgets;				// passive widgets
+	GuiControl * default_control;					// default active control
+	GuiControl * active_control;					// current active control
+	SceneNode::Handle s;
 	std::string name;
 
 	// each control registers a ControlCB
@@ -133,13 +134,13 @@ private:
 		void call(int n);
 	};
 	std::vector<ControlCb> control_set;		// control focus callbacks
+	std::vector<SignalVal> widget_set;		// widget property callbacks
+	std::vector<SignalValn> widgetn_set;	// widget list property callbacks
 	std::vector<SignalVal> action_set;		// action value callbacks
-	std::vector<SignalValn> action_setn;	// action value nth callbacks
+	Signal1<const std::string &> tooltip;	// tooltip text signal
 	Signal0 onfocus, oncancel;				// page action signals
 
 	void Clear(SceneNode & parentnode);
-
-	void Clear();
 
 	void SetActiveControl(GuiControl & control);
 };

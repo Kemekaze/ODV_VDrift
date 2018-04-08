@@ -20,12 +20,11 @@
 #ifndef _HSVTORGB_H
 #define _HSVTORGB_H
 
-#include "minmax.h"
 #include <cmath>
 
 inline void HSVtoRGB(float h, float s, float v, float & r, float & g, float & b)
 {
-	float hi = std::floor(h * 6 + 1E-5f); // add eps to avoid nummerical precision issues
+	float hi = std::floor(h * 6 + 1.0E-5); // add eps to avoid nummerical precision issues
 	float f = h * 6 - hi;
 	float p = v * (1 - s);
 	float q = v * (1 - (s * f));
@@ -71,11 +70,11 @@ inline void HSVtoRGB(float h, float s, float v, float & r, float & g, float & b)
 
 inline void RGBtoHSV(float r, float g, float b, float & h, float & s, float & v)
 {
-	float vmax = Max(Max(r, g), b);
-	float vmin = Min(Min(r, g), b);
-	float delta = vmax - vmin;
+	float max = (r > g  ?  r : g) > b  ?  (r > g  ?  r : g) : b;
+	float min = (r < g  ?  r : g) < b  ?  (r < g  ?  r : g) : b;
+	float delta = max - min;
 
-	v = vmax;
+	v = max;
 	if (delta == 0)
 	{
 		h = 0;
@@ -83,13 +82,13 @@ inline void RGBtoHSV(float r, float g, float b, float & h, float & s, float & v)
 	}
 	else
 	{
-		s = delta / vmax;
+		s = delta / max;
 
-		if (r == vmax)
+		if (r == max)
 		{
 			h = (g - b) / delta;
 		}
-		else if (g == vmax)
+		else if (g == max)
 		{
 			h = 2 + (b - r) / delta;
 		}
@@ -105,16 +104,6 @@ inline void RGBtoHSV(float r, float g, float b, float & h, float & s, float & v)
 			h += 1;
 		}
 	}
-}
-
-inline void HSVtoRGB(float hsv[3], float rgb[3])
-{
-	HSVtoRGB(hsv[0], hsv[1], hsv[2], rgb[0], rgb[1], rgb[2]);
-}
-
-inline void RGBtoHSV(float rgb[3], float hsv[3])
-{
-	RGBtoHSV(rgb[0], rgb[1], rgb[2], hsv[0], hsv[1], hsv[2]);
 }
 
 inline unsigned PackRGB(float r, float g, float b)

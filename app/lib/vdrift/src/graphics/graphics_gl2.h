@@ -31,8 +31,7 @@
 #include "render_output.h"
 #include "vertexarray.h"
 #include "vertexbuffer.h"
-
-#include <memory>
+#include "memory.h"
 
 struct GraphicsCamera;
 class Shader;
@@ -49,8 +48,8 @@ public:
 	/// returns true on success
 	virtual bool Init(
 		const std::string & shaderpath,
-		unsigned resx, unsigned resy,
-		unsigned antialiasing,
+		unsigned resx, unsigned resy, unsigned depthbpp,
+		bool fullscreen, unsigned antialiasing,
 		bool enableshadows, int shadow_distance,
 		int shadow_quality, int reflection_type,
 		const std::string & static_reflectionmap_file,
@@ -96,8 +95,6 @@ public:
 	virtual void SetCloseShadow(float value);
 
 	virtual bool GetShadows() const;
-
-	virtual void SetFixedSkybox(bool enable);
 
 	virtual void SetSunDirection(const Vec3 & value);
 
@@ -166,10 +163,10 @@ private:
 	// scenegraph output
 	template <typename T> class PtrVector : public std::vector<T*> {};
 	typedef DrawableContainer <PtrVector> DynamicDrawables;
-	DynamicDrawables dynamic_draw_lists; //used for objects that move or change
+	DynamicDrawables dynamic_drawlist; //used for objects that move or change
 
 	typedef DrawableContainer<AabbTreeNodeAdapter> StaticDrawables;
-	StaticDrawables static_draw_lists; //used for objects that will never change
+	StaticDrawables static_drawlist; //used for objects that will never change
 
 	struct CulledDrawList
 	{
@@ -178,7 +175,7 @@ private:
 		bool valid;
 	};
 	typedef std::map <std::string, CulledDrawList> CulledDrawListMap;
-	CulledDrawListMap culled_draw_lists;
+	CulledDrawListMap culled_drawlists;
 
 	// render outputs
 	typedef std::map <std::string, RenderOutput> RenderOutputMap;
@@ -198,34 +195,9 @@ private:
 	typedef std::map <std::string, GraphicsCamera> CameraMap;
 	CameraMap cameras;
 
-	// scene passes
-	struct GraphicsPass
-	{
-		std::vector<AabbTreeNodeAdapter<Drawable>*> static_draw_lists;
-		std::vector<PtrVector<Drawable>*> dynamic_draw_lists;
-		std::vector<CulledDrawList*> draw_lists;
-		std::vector<TextureInterface*> textures;
-		GraphicsCamera * camera;
-		GraphicsCamera * sub_cameras[6];
-		RenderOutput * output;
-		Shader * shader;
-		BlendMode::Enum blend_mode;
-		GLenum depth_test;
-		bool write_depth;
-		bool write_color;
-		bool write_alpha;
-		bool clear_depth;
-		bool clear_color;
-		bool postprocess;
-		bool cull;
-	};
-	std::vector<GraphicsPass> passes;
-
 	Vec3 light_direction;
-	std::shared_ptr<Sky> sky;
+	std::tr1::shared_ptr<Sky> sky;
 	bool sky_dynamic;
-	bool fixed_skybox;
-
 
 	void ChangeDisplay(
 		const int width, const int height,
@@ -246,37 +218,24 @@ private:
 		std::ostream & error_output);
 
 	/// load render configuration
+	/// return false on error
 	bool EnableShaders(std::ostream & info_output, std::ostream & error_output);
 
-	bool SetupFrameBufferTextures(std::ostream & info_output, std::ostream & error_output);
-
-	bool SetupFrameBufferObjectsAndShaders(std::ostream & info_output, std::ostream & error_output);
-
-	void SetupCameras(
-		float fov,
-		float view_distance,
-		const Vec3 cam_position,
-		const Quat & cam_rotation,
-		const Vec3 & dynamic_reflection_sample_pos);
+	void DisableShaders(std::ostream & error_output);
 
 	void ClearCulledDrawLists();
 
-	bool InitScenePass(
-		const GraphicsConfigPass & pass_config,
-		GraphicsPass & pass,
-		std::ostream & error_output);
-
 	void CullScenePass(
-		const GraphicsPass & pass,
+		const GraphicsConfigPass & pass,
 		std::ostream & error_output);
 
 	void DrawScenePass(
-		const GraphicsPass & pass,
+		const GraphicsConfigPass & pass,
 		std::ostream & error_output);
 
 	/// draw postprocess scene pass
 	void DrawScenePassPost(
-		const GraphicsPass & pass,
+		const GraphicsConfigPass & pass,
 		std::ostream & error_output);
 
 	/// get input textures vector from config inputs

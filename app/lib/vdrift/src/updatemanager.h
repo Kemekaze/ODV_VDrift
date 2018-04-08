@@ -72,7 +72,6 @@ private:
 
 	size_t updates_num;
 	int cur_object_id;
-	std::string objectname;
 	std::string updatefilebase;
 	std::string updatefile;
 	std::string updatefilebackup;

@@ -20,8 +20,7 @@
 #ifndef _STRINGIDMAP
 #define _STRINGIDMAP
 
-#include <unordered_map>
-#include <functional>
+#include "unordered_map.h"
 #include <string>
 
 class StringId
@@ -37,7 +36,7 @@ public:
 
 	struct hash
 	{
-		std::size_t operator()(const StringId toHash) const {return std::hash<unsigned int>()(toHash.id);}
+		std::size_t operator()(const StringId toHash) const {return std::tr1::hash<unsigned int>()(toHash.id);}
 	};
 
 private:
@@ -60,73 +59,10 @@ public:
 	std::string getString(StringId id) const;
 
 private:
-	std::unordered_map <std::string, StringId> idmap;
-	std::unordered_map <StringId, std::string, StringId::hash> stringmap;
+	std::tr1::unordered_map <std::string, StringId> idmap;
+	std::tr1::unordered_map <StringId, std::string, StringId::hash> stringmap;
 
 	StringId makeStringId(unsigned int id) const;
 };
-
-
-inline StringId::StringId() : id(0)
-{
-	// Constructor.
-}
-
-inline bool StringId::valid() const
-{
-	return id > 0;
-}
-
-inline bool StringId::operator== (const StringId other) const
-{
-	return id == other.id;
-}
-
-inline bool StringId::operator< (const StringId other) const
-{
-	return id < other.id;
-}
-
-inline bool StringIdMap::valid(StringId id)
-{
-	return id.valid();
-}
-
-inline StringId StringIdMap::addStringId(const std::string & str)
-{
-	auto i = idmap.find(str);
-	if (i != idmap.end())
-		return i->second;
-
-	StringId newId = makeStringId(idmap.size()+1);
-	idmap.insert(std::make_pair(str,newId));
-	stringmap.insert(std::make_pair(newId,str));
-	return newId;
-}
-
-inline StringId StringIdMap::getStringId(const std::string & str) const
-{
-	auto i = idmap.find(str);
-	if (i != idmap.end())
-		return i->second;
-
-	return StringId();
-}
-
-inline std::string StringIdMap::getString(StringId id) const
-{
-	auto i = stringmap.find(id);
-	if (i != stringmap.end())
-		return i->second;
-
-	return "";
-}
-
-inline StringId StringIdMap::makeStringId(unsigned int id) const
-{
-	StringId newId;
-	newId.id = id;
-	return newId;
-}
 
 #endif

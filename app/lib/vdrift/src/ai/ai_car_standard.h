@@ -24,32 +24,37 @@
 #include "ai_factory.h"
 #include "physics/carinput.h"
 #include "graphics/scenenode.h"
-#include "roadpatch.h"
+#include "bezier.h"
 
 #include <vector>
+#include <list>
+#include <map>
 
 class CarDynamics;
 
 class AiCarStandardFactory : public AiFactory
 {
-	AiCar * Create(unsigned carid, float difficulty);
+	AiCar * Create(const CarDynamics * car, float difficulty);
 };
 
 class AiCarStandard : public AiCar
 {
 public:
-	AiCarStandard(unsigned carid, float new_difficulty);
+	AiCarStandard(const CarDynamics * new_car, float new_difficulty);
 
 	~AiCarStandard();
 
-	void Update(float dt, const CarDynamics cars[], const unsigned cars_num);
+	void Update(float dt, const CarDynamics cars[], const int cars_num);
 
 #ifdef VISUALIZE_AI_DEBUG
 	void Visualize();
 #endif
 
 private:
-	const RoadPatch * last_patch;	///< last patch the car was on, used in case car is off track
+	float longitude_mu;			///< friction coefficient of the tire - longitude direction
+	float lateral_mu;			///< friction coefficient of the tire - lateral direction
+	const Bezier * last_patch;	///< last patch the car was on, used in case car is off track
+	bool use_racingline;		///< true allows the AI to take a proper racing line
 
 	struct OtherCarInfo
 	{
@@ -60,45 +65,52 @@ private:
 		float eta;
 		bool active;
 	};
-	std::vector <OtherCarInfo> othercars;
+	std::map <const CarDynamics *, OtherCarInfo> othercars;
 
-	void UpdateGasBrake(const CarDynamics & car);
+	void UpdateGasBrake();
 
-	static float CalcSpeedLimit(
-		const CarDynamics & car,
-		const RoadPatch * patch,
-		const RoadPatch * nextpatch,
-		float extraradius = 0);
+	void CalcMu();
 
-	void UpdateSteer(const CarDynamics & car);
+	float CalcSpeedLimit(const Bezier * patch, const Bezier * nextpatch, float friction, float extraradius);
 
-	void AnalyzeOthers(float dt, const CarDynamics cars[], const unsigned cars_num);
+	float CalcBrakeDist(float current_speed, float allowed_speed, float friction);
+
+	void UpdateSteer();
+
+	void AnalyzeOthers(float dt, const CarDynamics cars[], const int cars_num);
 
 	///< returns a float that should be added into the steering wheel command
-	float SteerAwayFromOthers(float carspeed);
+	float SteerAwayFromOthers();
 
 	///< returns a float that should be added into the brake command. speed_diff is the difference between the desired speed and speed limit of this area of the track
 	float BrakeFromOthers(float speed_diff);
 
-	RoadPatch RevisePatch(const RoadPatch * origpatch);
+	///< returns the angle in degrees of the normalized 2-vector
+	double Angle(double x1, double y1);
+
+	Bezier RevisePatch(const Bezier * origpatch, bool use_racingline);
+
+	template <class T> static bool isnan(const T & x);
+
+	static float clamp(float val, float min, float max);
 
 	static float RateLimit(float old_value, float new_value, float rate_limit_pos, float rate_limit_neg);
 
-	static const RoadPatch * GetCurrentPatch(const CarDynamics & car);
+	static const Bezier * GetCurrentPatch(const CarDynamics * c);
 
-	static Vec3 GetPatchFrontCenter(const RoadPatch & patch);
+	static Vec3 GetPatchFrontCenter(const Bezier & patch);
 
-	static Vec3 GetPatchBackCenter(const RoadPatch & patch);
+	static Vec3 GetPatchBackCenter(const Bezier & patch);
 
-	static Vec3 GetPatchDirection(const RoadPatch & patch);
+	static Vec3 GetPatchDirection(const Bezier & patch);
 
-	static Vec3 GetPatchWidthVector(const RoadPatch & patch);
+	static Vec3 GetPatchWidthVector(const Bezier & patch);
 
-	static float GetPatchRadius(const RoadPatch & patch);
+	static double GetPatchRadius(const Bezier & patch);
 
-	static void TrimPatch(RoadPatch & patch, float trimleft_front, float trimright_front, float trimleft_back, float trimright_back);
+	static void TrimPatch(Bezier & patch, float trimleft_front, float trimright_front, float trimleft_back, float trimright_back);
 
-	static float GetHorizontalDistanceAlongPatch(const RoadPatch & patch, Vec3 carposition);
+	static float GetHorizontalDistanceAlongPatch(const Bezier & patch, Vec3 carposition);
 
 	static float RampBetween(float val, float startat, float endat);
 

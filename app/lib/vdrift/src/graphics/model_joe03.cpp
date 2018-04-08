@@ -21,19 +21,17 @@
 #include "joepack.h"
 #include "mathvector.h"
 #include "endian_utility.h"
+#include "unordered_map.h"
 
-#include <unordered_map>
-#include <functional>
 #include <vector>
-#include <cassert>
-
 using std::vector;
 
 const unsigned int ModelJoe03::JOE_MAX_FACES = 32000;
 const unsigned int ModelJoe03::JOE_VERSION = 3;
+const float ModelJoe03::MODEL_SCALE = 1.0;
 
-static_assert(sizeof(int) == 4, "Code relies on int being exactly 4 bytes");
-static_assert(sizeof(short) == 2, "Code relies on short being exactly 2 bytes");
+// 3 verts per face results in JOE_MAX_FACES * 3 verts limit
+const unsigned int JOE_MAX_VERTS = ModelJoe03::JOE_MAX_FACES * 3;
 
 // This holds the header information that is read in at the beginning of the file
 struct JoeHeader
@@ -107,41 +105,42 @@ struct VertHash
 {
 	size_t operator ()(const Vert & v) const
 	{
-		long long h = (long long)v.vi << 32 | (long long)v.ti << 16 | (long long)v.ni;
-		return std::hash<long long>()(h);
+		const size_t h1 = (size_t(v.vi) << 16) | size_t(v.ti);
+		const size_t h2 = (size_t(v.ti) << 16) | size_t(v.ni);
+		return std::tr1::hash<size_t>()(h1) ^ std::tr1::hash<size_t>()(h2);
 	}
 };
 
 static void CorrectEndian(std::vector<JoeFace> & p)
 {
-	for (auto & f : p)
+	for (unsigned int i = 0; i < p.size(); ++i)
 	{
 		for (unsigned int d = 0; d < 3; ++d)
 		{
-			f.vertexIndex[d] = ENDIAN_SWAP_16 ( f.vertexIndex[d] );
-			f.normalIndex[d] = ENDIAN_SWAP_16 ( f.normalIndex[d] );
-			f.textureIndex[d] = ENDIAN_SWAP_16 ( f.textureIndex[d] );
+			p[i].vertexIndex[d] = ENDIAN_SWAP_16 ( p[i].vertexIndex[d] );
+			p[i].normalIndex[d] = ENDIAN_SWAP_16 ( p[i].normalIndex[d] );
+			p[i].textureIndex[d] = ENDIAN_SWAP_16 ( p[i].textureIndex[d] );
 		}
 	}
 }
 
 static void CorrectEndian(std::vector<JoeVertex> & p)
 {
-	for (auto & v : p)
+	for (unsigned int i = 0; i < p.size(); ++i)
 	{
 		for (unsigned int d = 0; d < 3; ++d)
 		{
-			v.vertex[d] = ENDIAN_SWAP_FLOAT ( v.vertex[d] );
+			p[i].vertex[d] = ENDIAN_SWAP_FLOAT ( p[i].vertex[d] );
 		}
 	}
 }
 
 static void CorrectEndian(std::vector<JoeTexCoord> & p)
 {
-	for (auto & t : p)
+	for (unsigned int i = 0; i < p.size(); ++i)
 	{
-		t.u = ENDIAN_SWAP_FLOAT ( t.u );
-		t.v = ENDIAN_SWAP_FLOAT ( t.v );
+		p[i].u = ENDIAN_SWAP_FLOAT ( p[i].u );
+		p[i].v = ENDIAN_SWAP_FLOAT ( p[i].v );
 	}
 }
 
@@ -185,11 +184,11 @@ static bool NeedsNormalSwap(JoeObject & object)
 			for (unsigned int v = 0; v < 3; v++)
 				norm = norm + norms[v];
 			Vec3 tnorm = (tri[2] - tri[0]).cross(tri[1] - tri[0]);
-			if (tnorm.MagnitudeSquared() > 1E-8f && norm.MagnitudeSquared() > 1E-8f)
+			if (tnorm.Magnitude() > 0.0001 && norm.Magnitude() > 0.0001)
 			{
 				norm = norm.Normalize();
 				tnorm = tnorm.Normalize();
-				if (norm.dot(tnorm) < 0.5f && norm.dot(tnorm) > -0.5f)
+				if (norm.dot(tnorm) < 0.5 && norm.dot(tnorm) > -0.5)
 				{
 					normal_flip_count++;
 					//std::cout << norm.dot(tnorm) << std::endl;
@@ -324,6 +323,21 @@ void ModelJoe03::ReadData ( FILE * m_FilePointer, const JoePack * pack, JoeObjec
 
 	//cout << "!!! loading " << modelpath << endl;
 
+	//go do scaling
+	for (unsigned int i = 0; i < num_frames; i++)
+	{
+		for ( unsigned int v = 0; v < object.frames[i].num_verts; v++ )
+		{
+			Vec3 temp;
+
+			temp.Set ( object.frames[i].verts[v].vertex );
+			temp = temp * MODEL_SCALE;
+
+			for (int n = 0; n < 3; n++)
+				object.frames[i].verts[v].vertex[n] = temp[n];
+		}
+	}
+
 	if (NeedsNormalSwap(object))
 	{
 		for (unsigned int i = 0; i < num_frames; i++)
@@ -379,7 +393,7 @@ void ModelJoe03::ReadData ( FILE * m_FilePointer, const JoePack * pack, JoeObjec
 	assert(!object.frames.empty());
 	const JoeFrame & frame = object.frames[0];
 
-	typedef std::unordered_map<Vert, unsigned int, VertHash> VertMap;
+	typedef std::tr1::unordered_map<Vert, unsigned int, VertHash> VertMap;
 	VertMap vmap(object.info.num_faces * 3);
 
 	vector <unsigned int> v_faces(object.info.num_faces * 3);
@@ -391,7 +405,7 @@ void ModelJoe03::ReadData ( FILE * m_FilePointer, const JoePack * pack, JoeObjec
 		for (unsigned int j = 0; j < 3; j++)
 		{
 			const Vert vert(f.vertexIndex[j], f.textureIndex[j], f.normalIndex[j]);
-			auto r = vmap.insert(std::make_pair(vert, vnum));
+			std::pair<VertMap::iterator, bool> r = vmap.insert(std::make_pair(vert, vnum));
 			if (r.second)
 				vnum++;
 
@@ -402,19 +416,19 @@ void ModelJoe03::ReadData ( FILE * m_FilePointer, const JoePack * pack, JoeObjec
 	vector <float> v_vertices(vnum * 3);
 	vector <float> v_texcoords(vnum * 2);
 	vector <float> v_normals(vnum * 3);
-	for (const auto & vi : vmap)
+	for (VertMap::const_iterator i = vmap.begin(); i != vmap.end(); i++)
 	{
-		const Vert & v = vi.first;
-		const unsigned int i = vi.second;
+		const Vert & v = i->first;
+		const unsigned int vi = i->second;
 
 		for (unsigned int j = 0; j < 3; j++)
-			v_vertices[i * 3 + j] = frame.verts[v.vi].vertex[j];
+			v_vertices[vi * 3 + j] = frame.verts[v.vi].vertex[j];
 
 		for (unsigned int j = 0; j < 3; j++)
-			v_normals[i * 3 + j] = frame.normals[v.ni].vertex[j];
+			v_normals[vi * 3 + j] = frame.normals[v.ni].vertex[j];
 
-		v_texcoords[i * 2 + 0] = frame.texcoords[v.ti].u;
-		v_texcoords[i * 2 + 1] = frame.texcoords[v.ti].v;
+		v_texcoords[vi * 2 + 0] = frame.texcoords[v.ti].u;
+		v_texcoords[vi * 2 + 1] = frame.texcoords[v.ti].v;
 	}
 
 	//assign to our mesh

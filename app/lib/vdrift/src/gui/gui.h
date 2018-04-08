@@ -34,8 +34,11 @@ public:
 
 	const std::string & GetLastPageName() const;
 
-	// return currently active nodes
-	std::pair<SceneNode*, SceneNode*> GetNodes();
+	SceneNode & GetNode();
+
+	GuiPage & GetPage(const std::string & name);
+
+	bool Active() const;
 
 	bool GetInGame() const;
 
@@ -49,8 +52,7 @@ public:
 		const std::string & skinname,
 		const std::string & language,
 		const float screenhwratio,
-		StrSignalMap vsignalmap,
-		SlotMap actionmap,
+		std::map <std::string, Slot0*> actionmap,
 		ContentManager & content,
 		std::ostream & info_output,
 		std::ostream & error_output);
@@ -78,6 +80,8 @@ public:
 
 	void Update(float dt);
 
+	/// if settings_are_newer is true, then this function will revise its internal options
+	/// to match the settings passed in.  otherwise, it'll operate the other way around
 	void GetOptions(std::map <std::string, std::string> & options) const;
 	void SetOptions(const std::map <std::string, std::string> & options);
 
@@ -89,13 +93,14 @@ public:
 
 	/// returns false if the specified page/label does not exist
 	bool SetLabelText(const std::string & page, const std::string & label, const std::string & text);
+	bool GetLabelText(const std::string & page, const std::string & label, std::string & text_output);
 
 	/// iterate trough all pages and update labels, slow
 	void SetLabelText(const std::string & page, const std::map<std::string, std::string> & label_text);
 	void SetLabelText(const std::map<std::string, std::string> & label_text);
 
 	/// access options
-	const std::string & GetOptionValue(const std::string & name) const;
+	std::string GetOptionValue(const std::string & name) const;
 	void SetOptionValue(const std::string & name, const std::string & value);
 	GuiOption & GetOption(const std::string & name);
 
@@ -112,6 +117,7 @@ private:
 	PageMap::iterator last_active_page;
 	PageMap::iterator active_page;
 	PageMap::iterator next_active_page;
+	SceneNode node;
 	GuiLanguage lang;
 	Font font;
 	float m_cursorx, m_cursory;			///< cache cursor position
@@ -138,7 +144,7 @@ private:
 	/// add option slots to action map
 	void RegisterOptions(
 		StrSignalMap & vsignalmap,
-		StrVecSlotMap & vnactionmap,
+		StrVecSlotlMap & vnactionmap,
 		StrSlotMap & vactionmap,
 		IntSlotMap & nactionmap,
 		SlotMap & actionmap);
