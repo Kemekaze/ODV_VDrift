@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS "-Isrc -I/usr/include/SDL2")
 SET(CMAKE_EXE_LINKER_FLAGS   "-Lbuild -Lsrc -Llib -L/usr/lib/x86_64-linux-gnu -lBulletSoftBody -lBulletDynamics -lBulletCollision -lLinearMath -lSDL2 -lGL -lpthread -lSDL2_image -lvorbisfile -lcurl " CACHE INTERNAL "" FORCE)
 #/usr/bin/g++ -isystem /app/build -I/usr/include/bullet  -c -Wall -Wextra -Wno-unused-parameter -g3 -D_REENTRANT -Isrc -I/usr/include/SDL2   -std=gnu++14   -c /app/lib/_vdrift/loadcamera.cpp
 #g++ -o build/loadcamera.o -c -Wall -Wextra -Wno-unused-parameter -g3 -D_REENTRANT -Isrc -I/usr/include/bullet -I/usr/include/SDL2 src/loadcamera.cpp
-#g++ -o build/vdrift -Lbuild -Lsrc -Llib -L/usr/lib/x86_64-linux-gnu -lBulletSoftBody -lBulletDynamics -lBulletCollision -lLinearMath -lSDL2 -lGL -lpthread -lSDL2_image -lvorbisfile -lcurl
+#g++ -o build/vdrift -lvorbisfile -lcurl
 
 
 find_package(libcluon REQUIRED)
