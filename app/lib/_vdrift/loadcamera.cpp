@@ -22,28 +22,28 @@
 #include "camera_free.h"
 #include "camera_mount.h"
 #include "camera_orbit.h"
-//#include "cfg/ptree.h"
+#include "cfg/ptree.h"
 
 Camera * LoadCamera(
-	//const PTree & cfg,
+	const PTree & cfg,
 	const float camerabounce,
 	std::ostream & error_output)
 {
 	std::string type, name;
-	//if (!cfg.get("type", type, error_output)) return 0;
-	//if (!cfg.get("name", name, error_output)) return 0;
+	if (!cfg.get("type", type, error_output)) return 0;
+	if (!cfg.get("name", name, error_output)) return 0;
 
 	Vec3 position;
 	Vec3 lookat;
 	float fov = 0.0;
 	float stiffness = 0.0;
-	/*cfg.get("fov", fov);
+	cfg.get("fov", fov);
 	cfg.get("stiffness", stiffness);
 	cfg.get("position", position);
 	if (!cfg.get("lookat", lookat))
 	{
 		lookat = position + Direction::Forward;
-	}*/
+	}
 
 	Camera * cam;
 	if (type == "mount")

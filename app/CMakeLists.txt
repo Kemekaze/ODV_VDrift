@@ -4,7 +4,7 @@ project(vDODV)
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Isrc -I/usr/include/SDL2")
-SET(CMAKE_EXE_LINKER_FLAGS   "-Lbuild -Lsrc -Llib -L/usr/lib/x86_64-linux-gnu -lBulletSoftBody -lBulletDynamics -lBulletCollision -lLinearMath -lSDL2 -lGL -lpthread -lSDL2_image -lvorbisfile -lcurl " CACHE INTERNAL "" FORCE)
+#SET(CMAKE_EXE_LINKER_FLAGS   "-Lbuild -Lsrc -Llib -L/usr/lib/x86_64-linux-gnu -lBulletSoftBody -lBulletDynamics -lBulletCollision -lLinearMath -lSDL2 -lGL -lpthread -lSDL2_image -lvorbisfile -lcurl " CACHE INTERNAL "" FORCE)
 #/usr/bin/g++ -isystem /app/build -I/usr/include/bullet  -c -Wall -Wextra -Wno-unused-parameter -g3 -D_REENTRANT -Isrc -I/usr/include/SDL2   -std=gnu++14   -c /app/lib/_vdrift/loadcamera.cpp
 #g++ -o build/loadcamera.o -c -Wall -Wextra -Wno-unused-parameter -g3 -D_REENTRANT -Isrc -I/usr/include/bullet -I/usr/include/SDL2 src/loadcamera.cpp
 #g++ -o build/vdrift -lvorbisfile -lcurl
@@ -14,7 +14,7 @@ find_package(libcluon REQUIRED)
 find_package(Bullet REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(Curl REQUIRED)
+find_package(CURL REQUIRED)
 include_directories(SYSTEM ${CLUON_INCLUDE_DIRS})
 
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/messages.cpp
@@ -186,3 +186,4 @@ target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${BULLET_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${CURL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} "-lvorbisfile")

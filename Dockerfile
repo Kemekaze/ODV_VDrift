@@ -39,16 +39,16 @@ RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv ./sdl2-confi
 
 
 #Compile VDrift
-RUN cd /app/lib/vdrift && scons prefix=/app/lib/vdrift datadir=data verbose=1 && cd /app
+#RUN cd /app/lib/vdrift && scons prefix=/app/lib/vdrift datadir=data verbose=1 && cd /app
 
 RUN mkdir $USRHOME/.vdrift/ \
  && mv $HOME/VDrift.config $USRHOME/.vdrift/.
 
 
-#RUN mkdir build \
-# && cd build \
-# && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON .. \
-# && make vDODV
+RUN mkdir build \
+ && cd build \
+ && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON .. \
+ && make vDODV
 
 
 
