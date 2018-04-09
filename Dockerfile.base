@@ -42,35 +42,41 @@ RUN apt-get update -y \
 # && rm ${VDRIFT_FILE}
 
 #install OpenDaVINCHI
-RUN wget -O - -q \
-    http://opendavinci.cse.chalmers.se/opendavinci.cse.chalmers.se.gpg.key \
-    | apt-key add - \
- && echo "deb http://opendavinci.cse.chalmers.se/ubuntu/ xenial main" \
-    | tee -a /etc/apt/sources.list \
- && add-apt-repository ppa:chrberger/libcluon \
+#RUN wget -O - -q \
+#    http://opendavinci.cse.chalmers.se/opendavinci.cse.chalmers.se.gpg.key \
+#    | apt-key add - \
+# && echo "deb http://opendavinci.cse.chalmers.se/ubuntu/ xenial main" \
+#    | tee -a /etc/apt/sources.list \
+# && add-apt-repository ppa:chrberger/libcluon \
+# && apt-get update -y \
+# && apt-get install -y --no-install-recommends \
+#    freeglut3 \
+#    freeglut3-dev \
+#    libboost-dev \
+#    libopencv-dev \
+#    libopencv-core-dev \
+#    libopencv-highgui-dev \
+#    libopencv-imgproc-dev \
+#    libpopt-dev \
+#    libqt4-dev \
+#    libqt4-opengl-dev \
+#    libqwt5-qt4-dev \
+#    libqwt5-qt4 \
+#    qt4-dev-tools rpm \
+#    psmisc \
+# && apt-get clean -y \
+# && apt-get autoremove -y \
+# && apt-get install -y \
+#    ffmpeg \
+#    opendavinci-lib \
+#    opendavinci-odtools \
+#    opendavinci-odsupercomponent \
+#    opendlv-lib \
+#    libcluon
+
+RUN add-apt-repository ppa:chrberger/libcluon \
  && apt-get update -y \
- && apt-get install -y --no-install-recommends \
-    freeglut3 \
-    freeglut3-dev \
-    libboost-dev \
-    libopencv-dev \
-    libopencv-core-dev \
-    libopencv-highgui-dev \
-    libopencv-imgproc-dev \
-    libpopt-dev \
-    libqt4-dev \
-    libqt4-opengl-dev \
-    libqwt5-qt4-dev \
-    libqwt5-qt4 \
-    qt4-dev-tools rpm \
-    psmisc \
- && apt-get clean -y \
- && apt-get autoremove -y \
  && apt-get install -y \
-    ffmpeg \
-    opendavinci-lib \
-    opendavinci-odtools \
-    opendavinci-odsupercomponent \
-    opendlv-lib \
-   	libcluon 
+    libcluon
+ && apt-get autoremove -y \
 # && git clone https://github.com/se-research/OpenDaVINCI.git

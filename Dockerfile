@@ -1,39 +1,56 @@
 #docker run -it -e --cpuset-cpus 0,1 --memory 512mb DISPLAY=192.168.1.2:0.0 -e SDL_VIDEO_X11_VISUALID=0x022 vdrift
 # Use ODV runtime as a parent image
-FROM kemekaze/odv_vdrift_base:latest
+FROM ubuntu:xenial
 
 
 # Set the working directory to /app
 WORKDIR /app
+RUN apt-get update -y \
+ && apt-get install software-properties-common -y \
+ && add-apt-repository ppa:roblib/ppa -y \
+ && add-apt-repository ppa:chrberger/libcluon \
+ && apt-get update -y \
+ && apt-get install -y \
+    wget \
+    git \
+    tar \
+    ant \
+    build-essential \
+    cmake \
+    make \
+    g++ \
+    scons \
+    libsdl2-dev \
+    libsdl2-image-dev \
+    libbullet-dev \
+    libvorbis-dev \
+    libcurl4-gnutls-dev \
+    libcluon \
+ && apt-get autoremove -y
+#    default-jre \
+#    default-jdk
+
 
 ENV HOME /app
-#ENV USR vDODV
 ENV USRHOME = /root
 ADD ./app /app
+#FIX FOR SDL2 LIB
+RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv ./sdl2-config.cmake /usr/lib/x86_64-linux-gnu/cmake/SDL2/.
 
-#RUN useradd --home-dir $HOME $USR \
-# && chown -R $USR:$USR $HOME
-
-#USER $USR
 
 #Compile VDrift
-#RUN cd /app/lib/vdrift && scons prefix=/app/lib/vdrift datadir=data && cd /app
+RUN cd /app/lib/vdrift && scons prefix=/app/lib/vdrift datadir=data verbose=1 && cd /app
 
 RUN mkdir $USRHOME/.vdrift/ \
  && mv $HOME/VDrift.config $USRHOME/.vdrift/.
 
-#RUN mkdir -p /opt/od \
-# && chown $USER:$USER /opt/od \
-# && cd OpenDaVINCI && mkdir build \
+
+#RUN mkdir build \
 # && cd build \
-# && cmake -D CMAKE_INSTALL_PREFIX=/opt/od .. \
-# && make
-
-RUN mkdir build \
- && cd build \
- && cmake -D CMAKE_BUILD_TYPE=Release .. \
- && make vDODV
+# && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON .. \
+# && make vDODV
 
 
 
+#CMD ["./build/vDODV"]
 CMD ["./lib/vdrift/build/vdrift"]
