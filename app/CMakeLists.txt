@@ -180,6 +180,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/window.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/openVDrift.cpp
 #${CMAKE_BINARY_DIR}/messages.cpp
 )
+
 target_link_libraries(${PROJECT_NAME} ${CLUON_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${BULLET_LIBRARIES})
