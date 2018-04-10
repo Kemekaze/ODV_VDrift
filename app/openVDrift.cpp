@@ -27,8 +27,8 @@ int main(int argc, char * argv[]) {
           std::cout << "Sent a message with the current to " << resPos.pos() << "." << std::endl;
       }
   });*/
-	//VDrift* v = new VDrift();
-	//v->run(argc,argv);
+	VDrift* v = new VDrift();
+	v->run(argc,argv);
 	/*if(od4.isRunning() == 0){
         std::cout << "[OD4] NOT RUNNING" << std::endl;
         return -1;

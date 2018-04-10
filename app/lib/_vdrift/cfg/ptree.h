@@ -25,7 +25,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
-#include <algorithm>
+//#include <algorithm>
 
 class PTree;
 
@@ -156,8 +156,12 @@ public:
 	template <typename T>
 	PTree & set(const std::string & key, const T & value);
 
+	std::string::const_iterator find(const std::string & key, const char val) const;
+
 	/// overwrite value and children
 	void set(const PTree & other);
+
+
 
 	/// overwrite value and merge children
 	void merge(const PTree & other);
@@ -345,7 +349,7 @@ inline void PTree::_get<const PTree *>(const PTree & p, const PTree * & value) c
 template <>
 inline PTree & PTree::set(const std::string & key, const PTree & value)
 {
-	std::string::const_iterator next = std::find(key.begin(), key.end(), '.');
+	std::string::const_iterator next = value.find(key, '.');
 	std::pair<iterator, bool> pi = _children.insert(std::make_pair(std::string(key.begin(), next), value));
 	PTree & p = pi.first->second;
 	if (pi.second && p._value.empty())
@@ -358,6 +362,16 @@ inline PTree & PTree::set(const std::string & key, const PTree & value)
 		return p;
 	}
 	return p.set(std::string(next+1, key.end()), PTree());
+}
+
+inline std::string::const_iterator PTree::find(const std::string & key, const char val) const{
+	std::string::const_iterator first = key.begin();
+	std::string::const_iterator last = key.end();
+  while (first!=last) {
+    if (*first==val) return first;
+    ++first;
+  }
+  return last;
 }
 
 #endif //_PTREE_H
