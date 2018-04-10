@@ -52,5 +52,5 @@ RUN mkdir build \
 
 
 
-#CMD ["./build/vDODV"]
-CMD ["./lib/vdrift/build/vdrift"]
+CMD ["./build/vDODV"]
+#CMD ["./lib/vdrift/build/vdrift"]
