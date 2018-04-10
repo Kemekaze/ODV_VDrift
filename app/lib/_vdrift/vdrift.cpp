@@ -54,8 +54,8 @@ int VDrift::run (int argc, char * argv[]){
 	std::ostream infosplitterstream(&infosplitter);
 	logging::splitterstreambuf errorsplitter(std::cerr, logfile);
 	std::ostream errorsplitterstream(&errorsplitter);
-	logging::logstreambuf infolog("INFO: ", infosplitterstream);
-	logging::logstreambuf errorlog("ERROR: ", errorsplitterstream);
+	logging::logstreambuf infolog("[VDRIFT] INFO: ", infosplitterstream);
+	logging::logstreambuf errorlog("[VDRIFT] ERROR: ", errorsplitterstream);
 
 	// Primary logging ostreams.
 	std::ostream info_output(&infolog);

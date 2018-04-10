@@ -42,6 +42,8 @@ include_directories(
 
 
 add_executable(${PROJECT_NAME}
+${CMAKE_CURRENT_SOURCE_DIR}/openVDrift.cpp
+${CMAKE_BINARY_DIR}/messages.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabb.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabbtree.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/ai/ai_car_experimental.cpp
@@ -177,8 +179,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/trackmap.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/updatemanager.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/utils.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/window.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/openVDrift.cpp
-#${CMAKE_BINARY_DIR}/messages.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} ${CLUON_LIBRARIES})

@@ -1,6 +1,6 @@
 #ifndef _DEFINITIONS_H
 #define _DEFINITIONS_H
-#define SETTINGS_DIR ".vdrift"
+#define SETTINGS_DIR "config/"
 #define DATA_DIR "/app/lib/vdrift/data"
 #define LOCALE_DIR "/usr/local/share/locale"
 #define DEBUG 1

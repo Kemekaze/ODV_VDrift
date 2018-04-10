@@ -7,39 +7,61 @@
 #include <fstream>
 #include <cstdlib>
 #include <string>
-//#include <opendavinci/odcore/base/Service.h>
+#include <thread>
+#include <chrono>
+#include <atomic>
 
-//#include "lib/cluon-complete.hpp"
-//#include "messages.hpp"
+#include "lib/cluon-complete.hpp"
+#include "messages.hpp"
 
 
 // VDRIFT
 #include "lib/vdrift/src/vdrift.h"
 
 using namespace std;
+using namespace std::this_thread;
+using namespace std::chrono;
+using std::chrono::system_clock;
 
 
-int main(int argc, char * argv[]) {
-	/*std::cout << "[VDRIFT] NOT RUNNING" << std::endl;
+std::atomic_bool stop(false);
+
+void runVdrift(int argc, char * argv[]){
+	std::cout << "[VDRIFT] STARTING" << std::endl;
+	VDrift* v = new VDrift();
+	v->run(argc,argv);
+}
+void runCluon(int argc, char * argv[]){
 	cluon::OD4Session od4(111,[](cluon::data::Envelope &&envelope) noexcept {
       if (envelope.dataType() == opendlv::proxy::Position::ID()) {
           opendlv::proxy::Position resPos = cluon::extractMessage<opendlv::proxy::Position>(std::move(envelope));
           std::cout << "Sent a message with the current to " << resPos.pos() << "." << std::endl;
       }
-  });*/
-	VDrift* v = new VDrift();
-	v->run(argc,argv);
-	/*if(od4.isRunning() == 0){
-        std::cout << "[OD4] NOT RUNNING" << std::endl;
-        return -1;
-  }else{
+  });
+	if(od4.isRunning() != 0){
 		std::cout << "[OD4] RUNNING" << std::endl;
 	}
+	while(od4.isRunning() != 0 && !stop){
+		std::cout << "[OD4] SENDING POSITION" << std::endl;
+		opendlv::proxy::Position reqPos;
+		reqPos.pos(0.1);
+		od4.send(reqPos);
+		sleep_until(system_clock::now() + 1s);
+	}
+  std::cout << "[OD4] STOPPED" << std::endl;
+}
 
-	std::cout << "[OD4] SENDING POSITION [0.0,0.0,0.0,0.0]" << std::endl;
-	opendlv::proxy::Position reqPos;
-	reqPos.pos(0.1);
-	od4.send(reqPos);*/
+int main(int argc, char * argv[]) {
+
+
+
+	thread tVDrift(runVdrift, argc,argv);
+	thread tCluon(runCluon, argc,argv);
+	string input = "";
+	getline(cin, input);
+	stop = true;
+	tCluon.join();
+	tVDrift.join();
 
 	return 0;
 }
