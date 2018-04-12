@@ -16,7 +16,7 @@
 
 
 // VDRIFT
-#include "lib/_vdrift/src/vdrift.h"
+#include "lib/_vdrift/vdrift.h"
 
 using namespace std;
 using namespace std::this_thread;
