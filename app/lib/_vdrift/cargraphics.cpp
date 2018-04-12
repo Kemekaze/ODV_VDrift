@@ -438,9 +438,11 @@ SceneNode & CarGraphics::GetNode()
 {
 	return topnode;
 }
-
+//HERE
 const std::vector<Camera*> & CarGraphics::GetCameras() const
 {
+	std::cout << "CarGraphics::GetCameras()" << std::endl;
+	std::cout << cameras.size() << std::endl;
 	return cameras;
 }
 

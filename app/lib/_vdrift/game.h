@@ -62,12 +62,14 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include "messages.hpp"
+#include "../cluon_handler.h"
 
 class Game
 {
 friend class GameDownloader;
 public:
-	Game(std::ostream & info_out, std::ostream & error_out);
+	Game(std::ostream & info_out, std::ostream & error_out, CluonHandler * ch);
 
 	~Game();
 
@@ -347,6 +349,10 @@ private:
 
 	std::auto_ptr <ForceFeedback> forcefeedback;
 	double ff_update_time;
+
+	CluonHandler *ch;
+
+
 };
 
 #endif

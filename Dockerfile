@@ -34,7 +34,7 @@ ENV HOME /app
 ENV USRHOME = /root
 ADD ./app /app
 #FIX FOR SDL2 LIB
-RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv ./sdl2-config.cmake /usr/lib/x86_64-linux-gnu/cmake/SDL2/.
+RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv ./config/sdl2-config.cmake /usr/lib/x86_64-linux-gnu/cmake/SDL2/.
 
 
 #Compile VDrift

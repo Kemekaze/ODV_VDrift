@@ -1,3 +1,0 @@
-message opendlv.proxy.Position [id = 2001] {
-  float pos [id = 1];
-}

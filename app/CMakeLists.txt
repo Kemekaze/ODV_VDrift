@@ -10,26 +10,21 @@ set(CMAKE_CXX_FLAGS "-Isrc -I/usr/include/SDL2")
 #g++ -o build/vdrift -lvorbisfile -lcurl
 
 
+
 find_package(libcluon REQUIRED)
 find_package(Bullet REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(CURL REQUIRED)
-include_directories(SYSTEM ${CLUON_INCLUDE_DIRS})
-
-add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/messages.cpp
-                   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                   COMMAND cluon-msc --cpp-sources --cpp-add-include-file=messages.hpp --out=${CMAKE_BINARY_DIR}/messages.cpp ${CMAKE_CURRENT_SOURCE_DIR}/messages.odvd
-                   COMMAND cluon-msc --cpp-headers --out=${CMAKE_BINARY_DIR}/messages.hpp ${CMAKE_CURRENT_SOURCE_DIR}/messages.odvd
-                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/messages.odvd)
-
 
 include_directories(
  SYSTEM ${CMAKE_BINARY_DIR}
+ ${CLUON_INCLUDE_DIRS}
  ${BULLET_INCLUDE_DIR}
  ${SDL2_INCLUDE_DIR}
  ${OPENGL_INCLUDE_DIR}
  ${CURL_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}/lib
  ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift
  ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/ai
  ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/cfg
@@ -40,10 +35,18 @@ include_directories(
  ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/sound
 )
 
+add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/messages.cpp
+                   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+                   COMMAND cluon-msc --cpp-sources --cpp-add-include-file=messages.hpp --out=${CMAKE_BINARY_DIR}/messages.cpp ${CMAKE_CURRENT_SOURCE_DIR}/config/messages.odvd
+                   COMMAND cluon-msc --cpp-headers --out=${CMAKE_BINARY_DIR}/messages.hpp ${CMAKE_CURRENT_SOURCE_DIR}/config/messages.odvd
+                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/config/messages.odvd)
 
 add_executable(${PROJECT_NAME}
-${CMAKE_CURRENT_SOURCE_DIR}/openVDrift.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/lib/cluon_handler.cpp
 ${CMAKE_BINARY_DIR}/messages.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/game.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/vdrift.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabb.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabbtree.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/ai/ai_car_experimental.cpp
@@ -74,7 +77,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/downloadable.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/dynamicsdraw.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/eventsystem.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/forcefeedback.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/game.cpp
+
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/graphics/dds.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/graphics/drawable.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/graphics/fbobject.cpp
@@ -140,7 +143,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loadcamera.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loadcollisionshape.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loaddrawable.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loadingscreen.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/vdrift.cpp
+
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/mathplane.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/mathvector.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/matrix4.cpp

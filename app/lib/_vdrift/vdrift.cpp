@@ -35,8 +35,10 @@ using std::endl;
 #include <fstream>
 #include <sstream>
 
-int VDrift::run (int argc, char * argv[]){
+
+int VDrift::run (int argc, char * argv[], CluonHandler * ch){
 	// Find the path of the log file.
+	std::cout << "[VDRIFT] ..." << std::endl;
 	PathManager paths;
 	std::ostringstream dummy;
 	paths.Init(dummy, dummy);
@@ -62,7 +64,7 @@ int VDrift::run (int argc, char * argv[]){
 	std::ostream error_output(&errorlog);
 
 	// Create the game object.
-	Game game(info_output, error_output);
+	Game game(info_output, error_output, ch);
 
 	// Start the real game.
 	list <string> args(argv, argv + argc);

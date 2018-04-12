@@ -75,7 +75,7 @@ static T cast(const std::string &str) {
 	return t;
 }
 
-Game::Game(std::ostream & info_out, std::ostream & error_out) :
+Game::Game(std::ostream & info_out, std::ostream & error_out, CluonHandler * ch) :
 	info_output(info_out),
 	error_output(error_out),
 	frame(0),
@@ -122,6 +122,7 @@ Game::Game(std::ostream & info_out, std::ostream & error_out) :
 	carcontrols_local.first = NULL;
 	dynamics.setContactAddedCallback(&CarDynamics::WheelContactCallback);
 	RegisterActions();
+	this->ch = ch;
 }
 
 Game::~Game()
@@ -151,6 +152,11 @@ void Game::Start(std::list <std::string> & args)
 	_PRINTSIZE_(replay);
 	_PRINTSIZE_(tire_smoke);
 	_PRINTSIZE_(ai);*/
+	info_output << "OPENDLV"<< std::endl;
+	//opendlv::sim::Frame reqF;
+	//reqF.x(0.1);
+	//ch->session()->send(reqF);
+
 
 	if (!ParseArguments(args))
 	{
@@ -917,6 +923,7 @@ void Game::AdvanceGameLogic()
 
 	if (track.Loaded() && !pause && !gui.Active())
 	{
+
 		PROFILER.beginBlock("ai");
 		ai.Visualize();
 		ai.Update(timestep, &car_dynamics[0], car_dynamics.size());
@@ -1296,18 +1303,12 @@ void Game::UpdateCarInfo()
 	gui.SetOptionValue("game.ai_level", cast(info.ailevel));
 }
 
-void Game::UpdateCars(float dt)
-{
-	for (int i = 0; i < car_dynamics.size(); ++i)
-	{
+void Game::UpdateCars(float dt){
+	for (int i = 0; i < car_dynamics.size(); ++i){
 		UpdateCarInputs(i);
-
 		car_graphics[i].Update(car_dynamics[i]);
-
 		car_sounds[i].Update(car_dynamics[i], dt);
-
 		AddTireSmokeParticles(car_dynamics[i], dt);
-
 		UpdateDriftScore(car_dynamics[i], dt);
 	}
 }
@@ -1441,14 +1442,18 @@ void Game::UpdateCarInputs(int carid)
 
 	// wrap around
 	const unsigned int camera_count = car_gfx.GetCameras().size();
-	if (camera_id > camera_count)
+	if (camera_id > camera_count )
 		camera_id = camera_count - 1;
 	else if (camera_id == camera_count)
 		camera_id = 0;
 
 	// set active camear
+	//DIS ONE CAUSES ISSUES[ERROR]
+		info_output << "car_gfx.GetCameras()[camera_id]" << std::endl;
 	active_camera = car_gfx.GetCameras()[camera_id];
+	info_output << "settings.SetCamera(camera_id)" << std::endl;
 	settings.SetCamera(camera_id);
+	info_output << "EOL settings.SetCamera(camera_id)" << std::endl;
 
 	// handle rear view
 	Vec3 pos = ToMathVector<float>(car.GetPosition());
@@ -1521,17 +1526,18 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 		error_output << "Error during track loading: " << trackname << std::endl;
 		return false;
 	}
-
 	// Load cars.
 	car_dynamics.reserve(cars_num);
 	car_graphics.reserve(cars_num);
 	car_sounds.reserve(cars_num);
 	for (size_t i = 0; i < cars_num; ++i)
 	{
-		if (!LoadCar(car_info[i], track.GetStart(i).first, track.GetStart(i).second, sound.Enabled()))
+		if (!LoadCar(car_info[i], track.GetStart(i).first, track.GetStart(i).second, sound.Enabled())){
+			error_output << "Unable to load car "<<car_info[i].name << std::endl;
 			return false;
-	}
+		}
 
+	}
 	// Load timer.
 	float pretime = (num_laps > 0) ? 3.0f : 0.0f;
 	if (!timer.Load(pathmanager.GetTrackRecordsPath()+"/"+trackname+".txt", pretime))
@@ -1559,10 +1565,13 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 	}
 	graphics->BindStaticVertexData(nodes);
 
+
 	// Set up GUI.
 	gui.SetInGame(true);
 	gui.Deactivate();
+
 	ShowHUD(true);
+
 	if (settings.GetMouseGrab())
 	{
 		window.ShowMouseCursor(false);
@@ -2587,13 +2596,16 @@ void Game::StartPractice()
 
 void Game::StartRace()
 {
+	info_output << "StartRace " << std::endl;
 	practice = (car_info.size() < 2);
 	int num_laps = practice ? 0 : settings.GetNumberOfLaps();
 	bool play_replay = false;
 	if (!NewGame(play_replay, !practice, num_laps))
 	{
+		info_output << "LoadGarage " << std::endl;
 		LoadGarage();
 	}
+	info_output << "EOL StartRace " << std::endl;
 }
 
 void Game::ReturnToGame()
