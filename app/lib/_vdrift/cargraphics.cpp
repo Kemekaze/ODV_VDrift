@@ -345,10 +345,10 @@ bool CarGraphics::Load(
 		}
 	}
 
-	/*if (!LoadCameras(cfg, camerabounce, error_output))
+	if (!LoadCameras(cfg, camerabounce, error_output))
 	{
 		return false;
-	}*/
+	}
 
 	SetColor(carcolor[0], carcolor[1], carcolor[2]);
 	loaded = true;
