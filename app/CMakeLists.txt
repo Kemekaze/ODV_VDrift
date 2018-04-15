@@ -47,6 +47,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/cluon_handler.cpp
 ${CMAKE_BINARY_DIR}/messages.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/game.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/vdrift.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/cardynamics.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabb.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabbtree.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/ai/ai_car_experimental.cpp
@@ -143,7 +144,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loadcamera.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loadcollisionshape.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loaddrawable.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/loadingscreen.cpp
-
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/mathplane.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/mathvector.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/matrix4.cpp
@@ -153,7 +153,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/particle.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/pathmanager.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/performance_testing.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/cardifferential.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/cardynamics.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/carengine.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/carsuspension.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/cartire.cpp

@@ -152,10 +152,20 @@ void Game::Start(std::list <std::string> & args)
 	_PRINTSIZE_(replay);
 	_PRINTSIZE_(tire_smoke);
 	_PRINTSIZE_(ai);*/
-	info_output << "OPENDLV"<< std::endl;
-	//opendlv::sim::Frame reqF;
-	//reqF.x(0.1);
-	//ch->session()->send(reqF);
+	 cluon::OD4Session od4(111,[](cluon::data::Envelope &&envelope) {
+    if (envelope.dataType() == opendlv::sim::Frame::ID()) {
+        opendlv::sim::Frame frame = cluon::extractMessage<opendlv::sim::Frame>(std::move(envelope));
+        std::cout << "Sent a message Frame.x " << frame.x() << "." << std::endl;
+    }
+  });
+	this->od4 = &od4;
+
+
+
+
+	if(this->od4->isRunning()){
+		info_output << "OD4Session running"<< std::endl;
+	}
 
 
 	if (!ParseArguments(args))
@@ -1448,16 +1458,29 @@ void Game::UpdateCarInputs(int carid)
 		camera_id = 0;
 
 	// set active camear
-	//DIS ONE CAUSES ISSUES[ERROR]
-		info_output << "car_gfx.GetCameras()[camera_id]" << std::endl;
 	active_camera = car_gfx.GetCameras()[camera_id];
-	info_output << "settings.SetCamera(camera_id)" << std::endl;
 	settings.SetCamera(camera_id);
-	info_output << "EOL settings.SetCamera(camera_id)" << std::endl;
 
 	// handle rear view
 	Vec3 pos = ToMathVector<float>(car.GetPosition());
 	Quat rot = ToQuaternion<float>(car.GetOrientation());
+	if(this->od4->isRunning()){
+		//opendlv::sim::Frame f = car.getFrame(pos,rot);
+		opendlv::sim::Frame f;
+		f.x(pos[0]);
+		f.y(pos[1]);
+		f.z(pos[2]);
+		float yaw;
+		float pitch;
+		float roll;
+		rot.GetEulerZYX(yaw,pitch,roll);
+		f.yaw(yaw);
+		f.pitch(pitch);
+		f.roll(roll);
+		this->od4->send(f);
+	}
+
+
 	if (carcontrol.GetInput(GameInput::VIEW_REAR))
 		rot.Rotate(M_PI, 0, 0, 1);
 

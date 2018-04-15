@@ -2037,3 +2037,17 @@ const btCollisionObject & CarDynamics::getCollisionObject() const
 {
 	return *static_cast<btCollisionObject*>(body);
 }
+opendlv::sim::Frame getFrame(Vec3 & pos,Quaternion<float> & rot){
+	opendlv::sim::Frame f;
+	f.x(pos[0]);
+	f.y(pos[1]);
+	f.z(pos[2]);
+	float yaw;
+	float pitch;
+	float roll;
+	rot.GetEulerZYX(yaw,pitch,roll);
+	f.yaw(yaw);
+	f.pitch(pitch);
+	f.roll(roll);
+	return f;
+}

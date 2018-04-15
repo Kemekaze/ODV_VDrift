@@ -35,6 +35,8 @@
 #include "motionstate.h"
 #include "joeserialize.h"
 #include "BulletDynamics/Dynamics/btActionInterface.h"
+#include "quaternion.h"
+#include "messages.hpp"
 
 #if (BT_BULLET_VERSION < 281)
 #define btCollisionObjectWrapper btCollisionObject
@@ -176,6 +178,8 @@ public:
 		const btCollisionObjectWrapper* col1,
 		int partId1,
 		int index1);
+
+	opendlv::sim::Frame getFrame(Vec3 & pos,Quaternion<float> & rot);
 
 protected:
 	DynamicsWorld * world;

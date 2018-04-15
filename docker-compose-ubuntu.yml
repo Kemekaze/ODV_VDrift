@@ -6,6 +6,6 @@ services:
     network_mode: "host"
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
-      - DISPLAY=<YOUR IP ADDRESS>:0.0
+      - DISPLAY=unix$DISPLAY
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix

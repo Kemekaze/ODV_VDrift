@@ -62,6 +62,7 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include "cluon-complete.hpp"
 #include "messages.hpp"
 #include "../cluon_handler.h"
 
@@ -351,6 +352,7 @@ private:
 	double ff_update_time;
 
 	CluonHandler *ch;
+	cluon::OD4Session *od4;
 
 
 };

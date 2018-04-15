@@ -10,7 +10,8 @@ class CluonHandler{
   public:
     CluonHandler();
     cluon::OD4Session* session();
-    void receive(cluon::data::Envelope &&envelope);
+    //void receive(cluon::data::Envelope &&envelope);
+    void callbacks();
 };
 
 #endif
