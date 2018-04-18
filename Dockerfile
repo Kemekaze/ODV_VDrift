@@ -48,7 +48,13 @@ RUN mkdir build \
  && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON .. \
  && make vDODV
 
+ADD ./tests /tests
+RUN mkdir /tests/build \
+ && cd /tests/build \
+ && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ../input \
+ && make vDODV-test-input
 
 
-CMD ["./build/vDODV"]
+
+#CMD ["./build/vDODV"]
 #CMD ["./lib/vdrift/build/vdrift"]

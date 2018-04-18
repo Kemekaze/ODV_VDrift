@@ -21,7 +21,7 @@
 
 int main(int argc, char * argv[]) {
 
-	CluonHandler* ch = new CluonHandler();
+	//CluonHandler* ch = new CluonHandler();
 	/*if(ch->session()->isRunning()){
 		std::cout << "OPENDLV RUNNING SENDING MESSAGE"<< std::endl;
 		opendlv::sim::Frame reqF;
@@ -32,6 +32,6 @@ int main(int argc, char * argv[]) {
 	}*/
 	std::cout << "[VDRIFT] STARTING" << std::endl;
 	VDrift* v = new VDrift();
-	v->run(argc,argv,ch);
+	v->run(argc,argv);
 	return 0;
 }

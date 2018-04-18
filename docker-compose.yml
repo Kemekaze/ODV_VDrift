@@ -6,6 +6,15 @@ services:
     network_mode: "host"
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
-      - DISPLAY=<YOUR IP ADDRESS>:0.0
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
+      - DISPLAY=192.168.1.2:0.0
+    command: "/app/build/vDODV"
+  vDODV-test-input:
+    depends_on:
+      - vDODV
+    build: .
+    image: kemekaze/vdodv
+    network_mode: "host"
+    environment:
+      - SDL_VIDEO_X11_VISUALID=0x022
+      - DISPLAY=192.168.1.2:0.0
+    command: "/tests/build/vDODV-test-input"

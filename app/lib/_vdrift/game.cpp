@@ -152,18 +152,12 @@ void Game::Start(std::list <std::string> & args)
 	_PRINTSIZE_(replay);
 	_PRINTSIZE_(tire_smoke);
 	_PRINTSIZE_(ai);*/
-	 cluon::OD4Session od4(111,[](cluon::data::Envelope &&envelope) {
-    if (envelope.dataType() == opendlv::sim::Frame::ID()) {
-        opendlv::sim::Frame frame = cluon::extractMessage<opendlv::sim::Frame>(std::move(envelope));
-        std::cout << "Sent a message Frame.x " << frame.x() << "." << std::endl;
-    }
-  });
-	this->od4 = &od4;
 
 
 
 
-	if(this->od4->isRunning()){
+
+	if(this->ch->isRunning()){
 		info_output << "OD4Session running"<< std::endl;
 	}
 
@@ -1390,6 +1384,12 @@ void Game::UpdateCarInputs(int carid)
 		carinputs[CarInput::BRAKE] = 1.0;
 		carinputs[CarInput::THROTTLE] = 0.0;
 	}
+	std::vector <float> override_inputs = this->ch->getControlInputs();
+	carinputs[CarInput::THROTTLE] = override_inputs[CarInput::THROTTLE];
+	carinputs[CarInput::BRAKE] = override_inputs[CarInput::BRAKE];
+	carinputs[CarInput::STEER_LEFT] = override_inputs[CarInput::STEER_LEFT];
+	carinputs[CarInput::STEER_RIGHT] = override_inputs[CarInput::STEER_RIGHT];
+
 
 	car.Update(carinputs);
 	car_gfx.Update(carinputs);
@@ -1464,7 +1464,7 @@ void Game::UpdateCarInputs(int carid)
 	// handle rear view
 	Vec3 pos = ToMathVector<float>(car.GetPosition());
 	Quat rot = ToQuaternion<float>(car.GetOrientation());
-	if(this->od4->isRunning()){
+	if(this->ch->isRunning()){
 		//opendlv::sim::Frame f = car.getFrame(pos,rot);
 		opendlv::sim::Frame f;
 		f.x(pos[0]);
@@ -1477,7 +1477,7 @@ void Game::UpdateCarInputs(int carid)
 		f.yaw(yaw);
 		f.pitch(pitch);
 		f.roll(roll);
-		this->od4->send(f);
+		//this->ch->send(f);
 	}
 
 
@@ -2619,16 +2619,13 @@ void Game::StartPractice()
 
 void Game::StartRace()
 {
-	info_output << "StartRace " << std::endl;
 	practice = (car_info.size() < 2);
 	int num_laps = practice ? 0 : settings.GetNumberOfLaps();
 	bool play_replay = false;
 	if (!NewGame(play_replay, !practice, num_laps))
 	{
-		info_output << "LoadGarage " << std::endl;
 		LoadGarage();
 	}
-	info_output << "EOL StartRace " << std::endl;
 }
 
 void Game::ReturnToGame()

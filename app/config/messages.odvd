@@ -34,6 +34,7 @@ message opendlv.sim.KinematicState [id = 1002] {
   float yawRate [id = 6];
 }
 
+
 message opendlv.body.ComponentInfo [id = 1021] {
   string description [id = 1];
   float x [id = 2];
