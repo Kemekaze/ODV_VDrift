@@ -1,15 +1,18 @@
 #docker run -it -e --cpuset-cpus 0,1 --memory 512mb DISPLAY=192.168.1.2:0.0 -e SDL_VIDEO_X11_VISUALID=0x022 vdrift
 # Use ODV runtime as a parent image
 FROM ubuntu:xenial
-
+#FROM seresearch/opendlv-on-opendlv-core-on-opendavinci-on-base:latest
 
 # Set the working directory to /app
 WORKDIR /app
-RUN apt-get update -y \
+RUN apt-get update \
+ && apt-get install -y wget \
+ && wget -O - -q http://opendavinci.cse.chalmers.se/opendavinci.cse.chalmers.se.gpg.key | apt-key add - \
+ && echo "deb http://opendavinci.cse.chalmers.se/ubuntu/ xenial main" | tee -a /etc/apt/sources.list \
  && apt-get install software-properties-common -y \
  && add-apt-repository ppa:roblib/ppa -y \
  && add-apt-repository ppa:chrberger/libcluon \
- && apt-get update -y \
+ && apt-get update \
  && apt-get install -y \
     wget \
     git \
@@ -25,7 +28,17 @@ RUN apt-get update -y \
     libbullet-dev \
     libvorbis-dev \
     libcurl4-gnutls-dev \
+    default-jre \
+    default-jdk \
+    libopencv-dev \
+    python-opencv \
     libcluon \
+    opendavinci-* \
+#    opendavinci-lib \
+#    opendavinci-odtools \
+#    opendavinci-odsupercomponent \
+#    opendavinci-oddatastructuregenerator \
+#    opendavinci-odcandatastructuregenerator \
  && apt-get autoremove -y
 
 
@@ -36,12 +49,11 @@ ADD ./app /app
 #FIX FOR SDL2 LIB
 RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv ./config/sdl2-config.cmake /usr/lib/x86_64-linux-gnu/cmake/SDL2/.
 
-
-#Compile VDrift
-#RUN cd /app/lib/vdrift && scons prefix=/app/lib/vdrift datadir=data verbose=1 && cd /app
-
-#RUN mkdir $USRHOME/.vdrift/ && mv $HOME/VDrift.config $USRHOME/.vdrift/.
-
+ADD ./opendlv.core/ /opendlv.core
+RUN mkdir /opendlv.core/build \
+  && cd /opendlv.core/build \
+  && cmake -D OPENDAVINCI_DIR=/opt/od4 -D CMAKE_INSTALL_PREFIX=/opt/opendlv.core .. \
+  && make
 
 RUN mkdir build \
  && cd build \
@@ -54,7 +66,20 @@ RUN mkdir /tests/build \
  && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ../input \
  && make vDODV-test-input
 
+ADD ./model/opendlv.lynx/ /model
+RUN mkdir /model/build \
+ && cd /model/build \
+ && cmake \
+    -D CMAKE_BUILD_TYPE=debug \
+    -D CMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+    #-D CXXTEST_INCLUDE_DIR=/opt/opendlv.lynx.sources/thirdparty/cxxtest \
+    -D OPENDAVINCI_DIR=/opt/od4 \
+    #-D PACKAGING_ENABLED=$PACKAGING_ENABLED \
+    -D ODVDOPENDLVSTANDARDMESSAGESET_DIR=/opt/opendlv.core \
+    -D CMAKE_INSTALL_PREFIX=/opt/opendlv.lynx .. \
+ && make
 
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/opendlv.lynx/lib
 
 #CMD ["./build/vDODV"]
 #CMD ["./lib/vdrift/build/vdrift"]

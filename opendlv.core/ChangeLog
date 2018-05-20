@@ -1,0 +1,45 @@
+0.14.0 - New version of the standard message set.
+0.13.0 - Removed obsolete message sets and renamed the standard message set.
+0.12.0 - Introducing OpenDLV Standard Message Set
+0.11.0 - Support for Velodyne-32, lifting OpenDaVINCI 4.16.0 to this layer
+0.10.3 - Lifting updates from lower layer to this repository.
+0.10.2 - Lifting updates from the lower layer to this repository.
+0.10.1 - Lifting updates from lower layer to this repository.
+0.10.0 - Updated to OpenDaVINCI 4.14.0 to have new CANDataStructureGenerator
+0.9.7 - Lifting OpenDaVINCI 4.13.1 to OpenDLV.core
+0.9.6 - Adding more groups to Applanix and propagating OpenDaVINCI 4.13.0 to OpenDLV.core
+0.9.5 - Introducing OpenDLV standard message set
+0.9.4 - Propagating OpenDaVINCI 4.12.1 to OpenDLV.core
+0.9.3 - Lifting OpenDaVINCI 4.12.0 to OpenDLV.core and adding camera calibration
+0.9.2 - Refactored proxy-applanix
+0.9.1 - Propagating OpenDaVINCI 4.11.1 to OpenDLV.core
+0.9.0 - SocketCAN and split Docker images for building
+0.8.9 - Propagating OpenDaVINCI v4.8.0 to OpenDLV.core
+0.8.8 - Propagating OpenDaVINCI v4.7.0 to OpenDLV.core
+0.8.7 - Angle sensor, IMU, revert to DBC v5
+0.8.6 - Camera replay and calibration functions, and Trimble GPS debug option.
+0.8.5 - Compilation fix on 32bit environments
+0.8.4 - Changes in the PointCloud data structure
+0.8.3 - Propagating updated OpenDaVINCI 4.5.1
+0.8.2 - Propagating update from OD4 to OpenDLV.core
+0.8.1 - New recording use cases
+0.8.0 - Supporting new messages from CAN dbc file
+0.7.1 - Updates to proxy-velodyne16 to handle SPC and CPC; new release 0.7.1
+0.7.0 - Changing CompactPointCloud from half_float to uint16_t
+0.6.0 - Improved CompactPointCloud handling in Velodyne 16, upgraded use-cases to docker-compose 1.9.0
+0.5.0 - CompactPointCloud in Velodyne
+0.4.0 - Upgraded to newest OD4
+0.3.0 - Velodyne 16
+0.2.2 - Enable ccache by default
+0.2.1 - Added proxy-trimble and WGS84 coordinate broadcasting
+0.2.0 - proxy-velodyne and CAN timestamping
+0.1.0 - * proxy-fh16, ps3controller, documentationcamera based on proxy-camera (OpenCV)
+0.0.9 - Using OpenDaVINCI 4.1.0 with container sample time.
+0.0.8 - Merging PS3 controller test.
+0.0.7 - Adding proxy-camera template
+0.0.6 - Prepare code layout for Chalmers Revere OpenDLV core.
+0.0.5 - Testing Docker hub notification web hook
+0.0.4 - Tagging Docker images.
+0.0.3 - Added Applanix decoder
+0.0.2 - Added script for handling versions
+0.0.1 - Initial version.

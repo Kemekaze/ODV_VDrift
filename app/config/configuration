@@ -1,3 +1,8 @@
-odsupercomponent.pulsetimeack.timeout = 5000 # (in milliseconds)
-odsupercomponent.pulsetimeack.exclude = odcockpit
-odcockpit.directoriesForSharedLibaries = /opt/opendlv.miniature
+sim-lynx-bicyclemodel.mass = 1510.0
+sim-lynx-bicyclemodel.momentOfInertiaZ = 0.25
+sim-lynx-bicyclemodel.length = 4.2
+sim-lynx-bicyclemodel.frontToCog = 1.8
+sim-lynx-bicyclemodel.frictionCoefficient = 1.0
+sim-lynx-bicyclemodel.magicFormulaCAlpha = 1.0
+sim-lynx-bicyclemodel.magicFormulaC = 1.0
+sim-lynx-bicyclemodel.magicFormulaE = 1.0
