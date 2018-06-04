@@ -445,14 +445,14 @@ struct BodyLoader
 	}
 };
 
-CarDynamics::CarDynamics()
+CarDynamics::CarDynamics()//: cid(cid),od4{cid}
 {
 	Init();
 }
 
-CarDynamics::CarDynamics(const CarDynamics & other)
+CarDynamics::CarDynamics(const CarDynamics & other)//: od4{other.cid}
 {
-	// we don't really support copying of these suckers
+	// we don't really support copying of these suckers;
 	assert(!other.body);
 	Init();
 }
@@ -1996,6 +1996,8 @@ void CarDynamics::Init()
 	tcs_active.resize(WHEEL_POSITION_SIZE, false);
 }
 
+
+
 bool CarDynamics::WheelContactCallback(
 	btManifoldPoint& cp,
 	const btCollisionObjectWrapper* col0,
@@ -2037,17 +2039,8 @@ const btCollisionObject & CarDynamics::getCollisionObject() const
 {
 	return *static_cast<btCollisionObject*>(body);
 }
-opendlv::sim::Frame getFrame(Vec3 & pos,Quaternion<float> & rot){
-	opendlv::sim::Frame f;
-	f.x(pos[0]);
-	f.y(pos[1]);
-	f.z(pos[2]);
-	float yaw;
-	float pitch;
-	float roll;
-	rot.GetEulerZYX(yaw,pitch,roll);
-	f.yaw(yaw);
-	f.pitch(pitch);
-	f.roll(roll);
-	return f;
+
+void CarDynamics::updateKinematicState(opendlv::sim::KinematicState & kinematicState){
+	motion_state[0].updatePostion(kinematicState.vx(),kinematicState.vz(),kinematicState.vz());
+	motion_state[0].updateYaw(kinematicState.yawRate());
 }

@@ -36,6 +36,9 @@
 #include "joeserialize.h"
 #include "BulletDynamics/Dynamics/btActionInterface.h"
 #include "quaternion.h"
+#include "tobullet.h"
+#include <mutex>
+#include "cluon-complete.hpp"
 #include "messages.hpp"
 
 #if (BT_BULLET_VERSION < 281)
@@ -65,6 +68,8 @@ public:
 
 	~CarDynamics();
 
+
+	void updateKinematicState(opendlv::sim::KinematicState & kinematicState);
 	// tirealt is optional tire config, overrides default tire type
 	bool Load(
 		const PTree & cfg,
@@ -178,8 +183,6 @@ public:
 		const btCollisionObjectWrapper* col1,
 		int partId1,
 		int index1);
-
-	opendlv::sim::Frame getFrame(Vec3 & pos,Quaternion<float> & rot);
 
 protected:
 	DynamicsWorld * world;
@@ -320,6 +323,12 @@ protected:
 	void Clear();
 
 	void Init();
+
+
+	//uint16_t cid;
+	//cluon::OD4Session od4;
+private:
+	//std::mutex mu;
 };
 
 #endif

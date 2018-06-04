@@ -34,6 +34,19 @@ struct MotionState : public btMotionState {
 		// ctor
 	}
 
+	void updatePostion(float vx, float vy, float vz){
+			position.setX(position.x()+vx);
+			position.setY(position.y()+vy);
+			position.setZ(position.z()+vz);
+	}
+	void updateYaw(float yaw){
+		//TODO incorrect yaw value
+		  std::cout <<  << '\n';
+			btQuaternion rot(yaw,0,0);
+			rotation = rotation + rot;
+
+	}
+
 	/// from user to physics
 	virtual void getWorldTransform(btTransform& centerOfMassWorldTrans) const
 	{

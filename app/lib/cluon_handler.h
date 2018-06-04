@@ -5,25 +5,24 @@
 #include <mutex>
 #include "cluon-complete.hpp"
 #include "messages.hpp"
-#include "_vdrift/physics/carinput.h"
 
 
 class CluonHandler{
   private:
+    uint16_t cid;
     cluon::OD4Session od4;
 
     std::mutex mu;
-    opendlv::proxy::GroundSteeringRequest steer;
-    opendlv::proxy::GroundAccelerationRequest acc;
-    opendlv::proxy::GroundDecelerationRequest dec;
+    opendlv::sim::KinematicState kinematicState;
   public:
-    CluonHandler(uint16_t CID) : od4{CID} { this->callbacks();};
-    //cluon::OD4Session session();
+    CluonHandler(uint16_t CID) : cid(CID), od4{CID} { this->callbacks();};
+
     void callbacks();
     template <typename T>
     void send(T &message);
     bool isRunning();
-    std::vector <float> getControlInputs();
+    opendlv::sim::KinematicState getKinematicState();
+
 };
 
 #endif

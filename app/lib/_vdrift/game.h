@@ -70,7 +70,7 @@ class Game
 {
 friend class GameDownloader;
 public:
-	Game(std::ostream & info_out, std::ostream & error_out, CluonHandler * ch);
+	Game(std::ostream & info_out, std::ostream & error_out);
 
 	~Game();
 
@@ -321,6 +321,8 @@ private:
 	std::vector <CarGraphics> car_graphics;
 	std::vector <CarSound> car_sounds;
 	std::vector <CarInfo> car_info;
+	std::vector <CluonHandler*> car_sessions;
+
 	size_t player_car_id;
 	size_t car_edit_id;
 	int race_laps;
@@ -351,8 +353,8 @@ private:
 	std::auto_ptr <ForceFeedback> forcefeedback;
 	double ff_update_time;
 
-	CluonHandler *ch;
-	cluon::OD4Session *od4;
+	uint16_t base_cid;
+
 
 
 };
