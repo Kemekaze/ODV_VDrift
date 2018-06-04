@@ -60,7 +60,7 @@ class CarDynamics : public btActionInterface
 friend class joeserialize::Serializer;
 
 public:
-	CarDynamics(uint16_t cid);
+	CarDynamics();
 
 	CarDynamics(const CarDynamics & other);
 
@@ -68,6 +68,8 @@ public:
 
 	~CarDynamics();
 
+
+	void updateKinematicState(opendlv::sim::KinematicState & kinematicState);
 	// tirealt is optional tire config, overrides default tire type
 	bool Load(
 		const PTree & cfg,
@@ -181,8 +183,6 @@ public:
 		const btCollisionObjectWrapper* col1,
 		int partId1,
 		int index1);
-
-	opendlv::sim::Frame getFrame(Vec3 & pos,Quaternion<float> & rot);
 
 protected:
 	DynamicsWorld * world;
@@ -324,11 +324,11 @@ protected:
 
 	void Init();
 
-	void InitOD4Callbacks();
-	uint16_t cid;
-	cluon::OD4Session od4;
+
+	//uint16_t cid;
+	//cluon::OD4Session od4;
 private:
-	std::mutex mu;
+	//std::mutex mu;
 };
 
 #endif

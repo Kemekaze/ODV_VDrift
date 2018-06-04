@@ -321,6 +321,8 @@ private:
 	std::vector <CarGraphics> car_graphics;
 	std::vector <CarSound> car_sounds;
 	std::vector <CarInfo> car_info;
+	std::vector <CluonHandler*> car_sessions;
+
 	size_t player_car_id;
 	size_t car_edit_id;
 	int race_laps;

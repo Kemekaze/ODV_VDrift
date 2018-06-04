@@ -44,7 +44,7 @@ BicycleModel::~BicycleModel()
 
 void BicycleModel::nextContainer(odcore::data::Container &a_container)
 {
-  std::cout << "nextContainer " << std::endl;
+  std::cout << "[MODEL][R]["<< a_container.getDataType() <<"]" << std::endl;
   if (a_container.getDataType() == opendlv::proxy::GroundDecelerationRequest::ID()) {
     odcore::base::Lock l(m_groundAccelerationMutex);
     auto groundDeceleration = a_container.getData<opendlv::proxy::GroundDecelerationRequest>();
@@ -62,7 +62,6 @@ void BicycleModel::nextContainer(odcore::data::Container &a_container)
 
 odcore::data::dmcp::ModuleExitCodeMessage::ModuleExitCode BicycleModel::body()
 {
-  std::cout << "body " << std::endl;
   double const g = 9.82f;
 
   auto kv = getKeyValueConfiguration();
@@ -84,7 +83,6 @@ odcore::data::dmcp::ModuleExitCodeMessage::ModuleExitCode BicycleModel::body()
   double yawRate{0.0};
 
   while (getModuleStateAndWaitForRemainingTimeInTimeslice() == odcore::data::dmcp::ModuleStateMessage::RUNNING) {
-    std::cout << "LOOP " << std::endl;
     // TODO: Is this really what we want? The vehicle can never reverse or stop.
     if (longitudinalSpeed < 0.0001) {
       longitudinalSpeed = 0.01;
@@ -134,9 +132,9 @@ odcore::data::dmcp::ModuleExitCodeMessage::ModuleExitCode BicycleModel::body()
     kinematicState.setYawRate(yawRate);
 
     odcore::data::Container c(kinematicState);
+    std::cout << "[MODEL][S]["<< opendlv::sim::KinematicState::ID() <<"][" << kinematicState.getVx() <<"][" << kinematicState.getVy() <<"][" << kinematicState.getYawRate() <<"]"<<std::endl;
     getConference().send(c);
   }
-  std::cout << "LOL " << std::endl;
   return odcore::data::dmcp::ModuleExitCodeMessage::OKAY;
 }
 

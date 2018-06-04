@@ -4,7 +4,7 @@ services:
     build: .
     image: kemekaze/vdodv
     network_mode: "host"
-    command: "odsupercomponent --cid=111 --configuration=/app/config/configuration"
+    command: "odsupercomponent --cid=${CID} --configuration=/app/config/configuration"
   vDODV:
     build: .
     image: kemekaze/vdodv
@@ -12,7 +12,7 @@ services:
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
       - DISPLAY=192.168.1.2:0.0
-    command: "/app/build/vDODV"
+    command: "/app/build/vDODV --cid ${CID}"
   vDODV-test-input:
     depends_on:
       - vDODV
@@ -22,7 +22,7 @@ services:
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
       - DISPLAY=192.168.1.2:0.0
-    command: "/tests/build/vDODV-test-input"
+    command: "/tests/build/vDODV-test-input --cid=${CID}"
   vDODV-model:
     depends_on:
       - vDODV
@@ -33,4 +33,4 @@ services:
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
       - DISPLAY=192.168.1.2:0.0
-    command: "/opt/opendlv.lynx/bin/opendlv-sim-lynx-bicyclemodel --cid=111"
+    command: "/opt/opendlv.lynx/bin/opendlv-sim-lynx-bicyclemodel --cid=${CID}"

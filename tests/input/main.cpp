@@ -37,7 +37,7 @@ message opendlv.proxy.GroundDecelerationRequest [id = 1093] {
 int main(int argc, char * argv[]) {
 
   cluon::OD4Session od4(111,[](cluon::data::Envelope &&envelope) {
-    std::cout << "SENT " << envelope.dataType()<< std::endl;
+    //std::cout << "[INPUT][R]["<< envelope.dataType() <<"]" << std::endl;
   });
   if(od4.isRunning()){
     std::cout << "OD4Session running" << std::endl;
@@ -46,6 +46,7 @@ int main(int argc, char * argv[]) {
     std::cout << "OD4Session is not running" << std::endl;
   }
   bool quit = false;
+  float increment = 0.01;
   SDL_Event event;
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window * window = SDL_CreateWindow("VDRIFT INPUT",SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, 0);
@@ -54,6 +55,8 @@ int main(int argc, char * argv[]) {
   opendlv::proxy::GroundSteeringRequest steer;
   opendlv::proxy::GroundAccelerationRequest acc;
   opendlv::proxy::GroundDecelerationRequest dec;
+  steer.groundSteering(0.0);
+  acc.groundAcceleration(0.0);
   while (od4.isRunning() && !quit){
     if(!SDL_PollEvent(&event)) continue;
     switch (event.type){
@@ -66,32 +69,33 @@ int main(int argc, char * argv[]) {
               quit = true;
               break;
             case SDLK_LEFT:
-              if(steer.groundSteering() < 0.0) break;
-              std::cout << "KEY DOWN SDLK_LEFT" << std::endl;
-              steer.groundSteering(-1.0);
+              steer.groundSteering(steer.groundSteering() - increment);
               od4.send(steer);
               break;
             case SDLK_RIGHT:
-              if(steer.groundSteering() > 0.0) break;
-              std::cout << "KEY DOWN SDLK_RIGHT" << std::endl;
-              steer.groundSteering(1.0);
+              steer.groundSteering(steer.groundSteering() + increment);
               od4.send(steer);
               break;
             case SDLK_UP:
-              if(acc.groundAcceleration() > 0.0) break;
-              std::cout << "KEY DOWN SDLK_UP" << std::endl;
-              acc.groundAcceleration(1.0);
-              od4.send(acc);
+              if(dec.groundDeceleration() > 0.0){
+                dec.groundDeceleration(0.0);
+              }else{
+                acc.groundAcceleration(acc.groundAcceleration() + increment);
+                od4.send(acc);
+              }
               break;
             case SDLK_DOWN:
-              if(dec.groundDeceleration() > 0.0) break;
-              std::cout << "KEY DOWN SDLK_DOWN" << std::endl;
-              dec.groundDeceleration(1.0);
-              od4.send(dec);
+              if(acc.groundAcceleration() > 0.0){
+                acc.groundAcceleration(0.0);
+              }else{
+                dec.groundDeceleration(dec.groundDeceleration() + increment);
+                od4.send(dec);
+              }
               break;
         }
+        std::cout << "[INPUT][S][" << steer.groundSteering() << "][" << (acc.groundAcceleration()-dec.groundDeceleration())  << "]" << std::endl;
         break;
-      case SDL_KEYUP:
+      /*case SDL_KEYUP:
         switch (event.key.keysym.sym){
             case SDLK_q:
               quit = true;
@@ -113,7 +117,7 @@ int main(int argc, char * argv[]) {
               od4.send(dec);
               break;
         }
-        break;
+        break;*/
     }
 
     //SDL_RenderClear(renderer);

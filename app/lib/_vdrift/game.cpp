@@ -576,7 +576,7 @@ bool Game::ParseArguments(std::list <std::string> & args)
 	for (std::list <std::string>::iterator i = args.begin(); i != args.end(); ++i)
 	{
 		info_output << *i << std::endl;
-		
+
 		if ((*i)[0] == '-')
 		{
 			argmap[*i] = "";
@@ -737,10 +737,9 @@ bool Game::ParseArguments(std::list <std::string> & args)
 	}
 
 	if (!argmap["--cid"].empty()){
-		base_cid = (uint16_t) ~((unsigned int) std::stoi(argmap["--cid"]));
-
+		base_cid = (uint16_t) std::stoi(argmap["--cid"]);
 	}else{
-		error_output << "Missing parameter --cid=[0-254]" << std::endl;
+		error_output << "Missing parameter --cid [0-254]" << std::endl;
 		continue_game = false;
 	}
 	return continue_game;
@@ -1327,7 +1326,7 @@ void Game::UpdateCarInputs(int carid)
 	CarDynamics & car = car_dynamics[carid];
 	CarGraphics & car_gfx = car_graphics[carid];
 	CarSound & car_snd = car_sounds[carid];
-
+	CluonHandler * car_sess = car_sessions[carid];
 	std::vector <float> carinputs(CarInput::INVALID, 0.0f);
 	if (replay.GetPlaying())
 	{
@@ -1465,10 +1464,18 @@ void Game::UpdateCarInputs(int carid)
 	// set active camear
 	active_camera = car_gfx.GetCameras()[camera_id];
 	settings.SetCamera(camera_id);
+	if(car_sess->isRunning()){
+		opendlv::sim::KinematicState kinematicState = car_sess->getKinematicState();
+		car.updateKinematicState(kinematicState);
+	}
 
 	// handle rear view
 	Vec3 pos = ToMathVector<float>(car.GetPosition());
 	Quat rot = ToQuaternion<float>(car.GetOrientation());
+
+
+
+
 	/*if(this->ch->isRunning()){
 		//opendlv::sim::Frame f = car.getFrame(pos,rot);
 		opendlv::sim::Frame f;
@@ -1558,6 +1565,7 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 	car_dynamics.reserve(cars_num);
 	car_graphics.reserve(cars_num);
 	car_sounds.reserve(cars_num);
+	car_sessions.reserve(cars_num);
 	for (size_t i = 0; i < cars_num; ++i)
 	{
 		if (!LoadCar(car_info[i], track.GetStart(i).first, track.GetStart(i).second, sound.Enabled())){
@@ -1711,7 +1719,11 @@ bool Game::LoadCar(
 		return false;
 	}
 
-	car_dynamics.push_back(CarDynamics(base_cid+car_dynamics.size()));
+	car_dynamics.push_back(CarDynamics());
+	uint16_t cid = base_cid + ((uint16_t) car_dynamics.size()-1);
+	info_output << " CID: " << cid << std::endl;
+	CluonHandler* ch = new CluonHandler(cid);
+	car_sessions.push_back(ch);
 	CarDynamics & car = car_dynamics[car_dynamics.size() - 1];
 	if (!car.Load(
 		*carconf, cardir, info.tire,
@@ -1884,6 +1896,7 @@ void Game::SetGarageCar()
 	car_dynamics.clear();
 	car_graphics.clear();
 	car_sounds.clear();
+	car_sessions.clear();
 
 	// load car
 	std::vector<SceneNode *> nodes;
@@ -2602,6 +2615,7 @@ void Game::LeaveGame()
 	track.Clear();
 	car_dynamics.clear();
 	car_graphics.clear();
+	car_sessions.clear();
 	car_sounds.clear();
 	sound.Update(true);
 	hud.SetVisible(false);
