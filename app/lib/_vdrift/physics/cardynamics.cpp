@@ -445,14 +445,14 @@ struct BodyLoader
 	}
 };
 
-CarDynamics::CarDynamics()
+CarDynamics::CarDynamics(uint16_t cid): cid(cid),od4{cid}
 {
 	Init();
 }
 
-CarDynamics::CarDynamics(const CarDynamics & other)
+CarDynamics::CarDynamics(const CarDynamics & other): od4{other.cid}
 {
-	// we don't really support copying of these suckers
+	// we don't really support copying of these suckers;
 	assert(!other.body);
 	Init();
 }
@@ -1994,6 +1994,26 @@ void CarDynamics::Init()
 	wheel_contact.resize(WHEEL_POSITION_SIZE);
 	abs_active.resize(WHEEL_POSITION_SIZE, false);
 	tcs_active.resize(WHEEL_POSITION_SIZE, false);
+	InitOD4Callbacks();
+}
+
+void CarDynamics::InitOD4Callbacks(){
+	od4.dataTrigger(opendlv::sim::KinematicState::ID(), [this](cluon::data::Envelope &&envelope){
+    mu.lock();
+
+    opendlv::sim::KinematicState ks = cluon::extractMessage<opendlv::sim::KinematicState>(std::move(envelope));
+    std::cout << "[MotionState][SimLynx]: " << ks.vx() << ks.vy() << ks.vz() << ks.rollRate() << ks.pitchRate() << ks.yawRate() << std::endl;
+		btVector3 pos = motion_state[0].position;
+		Quat rot = ToQuaternion<float>(motion_state[0].rotation);
+		float yaw;
+		float pitch;
+		float roll;
+		rot.GetEulerZYX(yaw,pitch,roll);
+    std::cout << "[MotionState][Vdrift]: " << pos[0] << pos[1] << pos[2] << roll << pitch << yaw << std::endl;
+
+
+    mu.unlock();
+  });
 }
 
 bool CarDynamics::WheelContactCallback(

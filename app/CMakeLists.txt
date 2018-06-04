@@ -42,12 +42,12 @@ add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/messages.cpp
                    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/config/messages.odvd)
 
 add_executable(${PROJECT_NAME}
+${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/cardynamics.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/game.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/vdrift.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/cluon_handler.cpp
 ${CMAKE_BINARY_DIR}/messages.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/game.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/vdrift.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/cardynamics.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabb.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/aabbtree.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/ai/ai_car_experimental.cpp

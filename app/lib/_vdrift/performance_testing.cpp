@@ -39,7 +39,7 @@ static inline float ConvertToFeet(float meters)
 }
 
 PerformanceTesting::PerformanceTesting(DynamicsWorld & world) :
-	world(world), track(0), plane(0)
+	world(world), track(0), plane(0), car(111)
 {
 	surface.type = TrackSurface::ASPHALT;
 	surface.bumpWaveLength = 1;

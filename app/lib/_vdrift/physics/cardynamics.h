@@ -36,6 +36,9 @@
 #include "joeserialize.h"
 #include "BulletDynamics/Dynamics/btActionInterface.h"
 #include "quaternion.h"
+#include "tobullet.h"
+#include <mutex>
+#include "cluon-complete.hpp"
 #include "messages.hpp"
 
 #if (BT_BULLET_VERSION < 281)
@@ -57,7 +60,7 @@ class CarDynamics : public btActionInterface
 friend class joeserialize::Serializer;
 
 public:
-	CarDynamics();
+	CarDynamics(uint16_t cid);
 
 	CarDynamics(const CarDynamics & other);
 
@@ -320,6 +323,12 @@ protected:
 	void Clear();
 
 	void Init();
+
+	void InitOD4Callbacks();
+	uint16_t cid;
+	cluon::OD4Session od4;
+private:
+	std::mutex mu;
 };
 
 #endif

@@ -62,9 +62,8 @@ int VDrift::run (int argc, char * argv[]){
 	// Primary logging ostreams.
 	std::ostream info_output(&infolog);
 	std::ostream error_output(&errorlog);
-	CluonHandler* ch = new CluonHandler(111);
 	// Create the game object.
-	Game game(info_output, error_output, ch);
+	Game game(info_output, error_output);
 
 	// Start the real game.
 	list <string> args(argv, argv + argc);
