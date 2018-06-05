@@ -21,6 +21,7 @@
 #define _MOTIONSTATE_H
 
 #include "LinearMath/btMotionState.h"
+#include "toBullet.h"
 
 struct MotionState : public btMotionState {
 	btQuaternion rotation;
@@ -41,9 +42,14 @@ struct MotionState : public btMotionState {
 	}
 	void updateYaw(float yaw){
 		//TODO incorrect yaw value
-		  std::cout <<  << '\n';
-			btQuaternion rot(yaw,0,0);
-			rotation = rotation + rot;
+		  Quat rot = ToQuaternion<float>(rotation);
+			float _yaw;
+			float _pitch;
+			float _roll;
+			rot.GetEulerZYX(_yaw,_pitch,_roll);
+		  std::cout << "[VDRIFT][ROTATION][" << _yaw << "][" << _pitch << "][" << _roll << "] <- [" << yaw << "]" << std::endl;
+			//btQuaternion rot(yaw,0,0);
+			//rotation = rotation + rot;
 
 	}
 

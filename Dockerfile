@@ -41,19 +41,17 @@ RUN apt-get update \
 #    opendavinci-odcandatastructuregenerator \
  && apt-get autoremove -y
 
-
+ ADD ./opendlv.core/ /opendlv.core
+ RUN mkdir /opendlv.core/build \
+   && cd /opendlv.core/build \
+   && cmake -D OPENDAVINCI_DIR=/opt/od4 -D CMAKE_INSTALL_PREFIX=/opt/opendlv.core .. \
+   && make
 
 ENV HOME /app
 ENV USRHOME = /root
 ADD ./app /app
 #FIX FOR SDL2 LIB
 RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv ./config/sdl2-config.cmake /usr/lib/x86_64-linux-gnu/cmake/SDL2/.
-
-ADD ./opendlv.core/ /opendlv.core
-RUN mkdir /opendlv.core/build \
-  && cd /opendlv.core/build \
-  && cmake -D OPENDAVINCI_DIR=/opt/od4 -D CMAKE_INSTALL_PREFIX=/opt/opendlv.core .. \
-  && make
 
 RUN mkdir build \
  && cd build \
