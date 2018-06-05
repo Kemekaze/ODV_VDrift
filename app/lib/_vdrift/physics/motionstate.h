@@ -21,7 +21,7 @@
 #define _MOTIONSTATE_H
 
 #include "LinearMath/btMotionState.h"
-#include "toBullet.h"
+#include "tobullet.h"
 
 struct MotionState : public btMotionState {
 	btQuaternion rotation;
