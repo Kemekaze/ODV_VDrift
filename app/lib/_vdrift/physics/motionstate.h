@@ -36,21 +36,18 @@ struct MotionState : public btMotionState {
 	}
 
 	void updatePostion(float vx, float vy, float vz){
+			//std::cout << "[VDRIFT][POS][+][" << vx <<"][" << vy <<"][" << vz << "]" << std::endl;
 			position.setX(position.x()+vx);
 			position.setY(position.y()+vy);
 			position.setZ(position.z()+vz);
 	}
 	void updateYaw(float yaw){
-		//TODO incorrect yaw value
 		  Quat rot = ToQuaternion<float>(rotation);
 			float _yaw;
 			float _pitch;
 			float _roll;
 			rot.GetEulerZYX(_yaw,_pitch,_roll);
-		  std::cout << "[VDRIFT][ROTATION][" << _yaw << "][" << _pitch << "][" << _roll << "] <- [" << yaw << "]" << std::endl;
-			//btQuaternion rot(yaw,0,0);
-			//rotation = rotation + rot;
-
+			rotation.setEuler(_yaw,_pitch,_roll+yaw);
 	}
 
 	/// from user to physics
@@ -64,6 +61,7 @@ struct MotionState : public btMotionState {
 	}
 
 	/// from physics to user (for active objects)
+	// updates position and rotation of car
 	virtual void setWorldTransform(const btTransform& centerOfMassWorldTrans)
 	{
 		//m_graphicsWorldTrans = centerOfMassWorldTrans * m_centerOfMassOffset;

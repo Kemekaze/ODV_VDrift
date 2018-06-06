@@ -38,11 +38,6 @@ int main(int argc, char * argv[]) {
   uint16_t cid = 111;
   cluon::OD4Session od4(cid,[](cluon::data::Envelope &&envelope) {
 
-<<<<<<< HEAD
-=======
-  cluon::OD4Session od4(111,[](cluon::data::Envelope &&envelope) {
-    //std::cout << "[INPUT][R]["<< envelope.dataType() <<"]" << std::endl;
->>>>>>> tmp
   });
   if(od4.isRunning()){
     std::cout << "OD4Session running" << std::endl;

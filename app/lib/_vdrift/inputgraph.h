@@ -88,6 +88,9 @@ public:
 		translation[1] = -throttle*vheight/2.7;
 		vball.GetTransform(graphroot).SetTranslation(translation);
 	}
+	void updateKinematicState(opendlv::sim::KinematicState & kinematicState){
+		
+	}
 
 	void Hide()
 	{

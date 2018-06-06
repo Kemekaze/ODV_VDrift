@@ -772,6 +772,7 @@ unsigned CarDynamics::GetNumBodies() const
 
 const btVector3 & CarDynamics::GetPosition(int i) const
 {
+	//std::cout << "[VDRIFT][POS][" << i << "][" << motion_state[i].position.getX() << "][" << motion_state[i].position.getY() << "][" << motion_state[i].position.getZ() << "]" << std::endl;
 	btAssert(i < motion_state.size());
 	return motion_state[i].position;
 }
@@ -2041,6 +2042,65 @@ const btCollisionObject & CarDynamics::getCollisionObject() const
 }
 
 void CarDynamics::updateKinematicState(opendlv::sim::KinematicState & kinematicState){
-	motion_state[0].updatePostion(kinematicState.vx(),kinematicState.vz(),kinematicState.vz());
-	motion_state[0].updateYaw(kinematicState.yawRate());
+	// update yaw
+	btVector3 car_position = GetCenterOfMass();
+	btQuaternion rotation = GetOrientation();
+	Quat rot = ToQuaternion<float>(rotation);
+	float _yaw;
+	float _pitch;
+	float _roll;
+	rot.GetEulerZYX(_yaw,_pitch,_roll);
+	rotation.setEuler(_yaw,_pitch,_roll+kinematicState.yawRate());
+	//btVector3 car_orientation = quatRotate(rotation, Direction::forward);
+	//use based on yawRate to determine vx?
+	btVector3 car_orientation = quatRotate(GetOrientation(), Direction::forward);
+	btVector3 vx = car_orientation * kinematicState.vx();
+
+
+	/*btVector3 dest_point = car_position + vx;
+	btVector3 desire_orientation = dest_point - car_position;
+
+	car_orientation[2] = 0;
+	desire_orientation[2] = 0;
+	car_orientation.normalize();
+	desire_orientation.normalize();
+	double alpha = Angle(car_orientation[0], car_orientation[1]);
+  double beta = Angle(desire_orientation[0], desire_orientation[1]);
+
+	double angle = beta - alpha;
+
+	if (angle > -360.0 && angle <= -180.0)
+		angle = -(360.0 + angle);
+	else if (angle > -180.0 && angle <= 0.0)
+		angle = - angle;
+	else if (angle > 0.0 && angle <= 180.0)
+		angle = - angle;
+	else if (angle > 180.0 && angle <= 360.0)
+		angle = 360.0 - angle;
+
+	float optimum_range = GetTire(FRONT_LEFT).getIdealSlipAngle() * SIMD_DEGS_PER_RAD;
+	angle = clamp(angle, -optimum_range, optimum_range);
+
+	float steer_value = angle / GetMaxSteeringAngle();
+	if (steer_value > 1.0) steer_value = 1.0;
+	else if (steer_value < -1.0) steer_value = -1.0;
+  */
+
+	//get orientaiton of the car an mmutiply with vx to set the linerar velocity
+
+	body->setLinearVelocity(vx);
+	SetSteering(kinematicState.yawRate());
+
+
+
+
+	//motion_state[0].updatePostion(kinematicState.vx(),kinematicState.vy(),kinematicState.vz());
+
+}
+float CarDynamics::clamp(float val, float min, float max){
+	assert(min <= max);
+	return std::min(max,std::max(min,val));
+}
+double CarDynamics::Angle(double x1, double y1){
+	return atan2(y1, x1) * 180.0 / M_PI;
 }

@@ -40,6 +40,7 @@
 #include <mutex>
 #include "cluon-complete.hpp"
 #include "messages.hpp"
+#include "tobullet.h"
 
 #if (BT_BULLET_VERSION < 281)
 #define btCollisionObjectWrapper btCollisionObject
@@ -324,11 +325,8 @@ protected:
 
 	void Init();
 
-
-	//uint16_t cid;
-	//cluon::OD4Session od4;
-private:
-	//std::mutex mu;
+	static float clamp(float val, float min, float max);
+	double Angle(double x1, double y1);
 };
 
 #endif

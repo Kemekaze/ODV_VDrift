@@ -1396,6 +1396,12 @@ void Game::UpdateCarInputs(int carid)
 */
 
 	car.Update(carinputs);
+	//override
+	if(car_sess->isRunning()){
+		opendlv::sim::KinematicState kinematicState = car_sess->getKinematicState();
+		car.updateKinematicState(kinematicState);
+	}
+
 	car_gfx.Update(carinputs);
 
 	// Record car state.
@@ -1464,10 +1470,7 @@ void Game::UpdateCarInputs(int carid)
 	// set active camear
 	active_camera = car_gfx.GetCameras()[camera_id];
 	settings.SetCamera(camera_id);
-	if(car_sess->isRunning()){
-		opendlv::sim::KinematicState kinematicState = car_sess->getKinematicState();
-		car.updateKinematicState(kinematicState);
-	}
+
 
 	// handle rear view
 	Vec3 pos = ToMathVector<float>(car.GetPosition());
