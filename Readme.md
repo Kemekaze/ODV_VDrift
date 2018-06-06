@@ -1,17 +1,24 @@
-
-##Install
+## Requirments
+.env file containing 
+```console
+CID=[1-254]
+WIN_DISPLAY=[YOUR IP ADDRESS]:0.0 (Windows only)
+```
+## Install
 ```console
 docker build -t kemekaze/vdodv .
 ```
-
-## RUN docker Windows
-``` console
-docker run -it -e DISPLAY=<YOUR IP ADDRESS>:0.0 -e SDL_VIDEO_X11_VISUALID=0x022 kemekaze/vdodv
-
+## Get Current Version
+```console
+docker pull kemekaze/vdodv
 ```
-## RUN docker Ubuntu
+## RUN (Windows)
+``` console
+docker-compose up
+```
+## RUN (Ubuntu)
 ``` console
 xhost +local:docker
-docker run -it --rm -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=unix$DISPLAY kemekaze/vdodv
-
+OR xhost +
+docker-compose up -f docker-compose-ubuntu.yml
 ```
