@@ -11,7 +11,7 @@ services:
     network_mode: "host"
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
-      - DISPLAY=192.168.1.2:0.0
+      - DISPLAY=${WIN_DISPLAY}
     command: "/app/build/vDODV --cid ${CID}"
   vDODV-test-input:
     depends_on:
@@ -21,7 +21,7 @@ services:
     network_mode: "host"
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
-      - DISPLAY=192.168.1.2:0.0
+      - DISPLAY=${WIN_DISPLAY}
     command: "/tests/build/vDODV-test-input --cid=${CID}"
   vDODV-model:
     depends_on:
@@ -30,7 +30,4 @@ services:
     build: .
     image: kemekaze/vdodv
     network_mode: "host"
-    environment:
-      - SDL_VIDEO_X11_VISUALID=0x022
-      - DISPLAY=192.168.1.2:0.0
     command: "/opt/opendlv.lynx/bin/opendlv-sim-lynx-bicyclemodel --cid=${CID}"
