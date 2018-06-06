@@ -8,7 +8,7 @@ WIN_DISPLAY=[YOUR IP ADDRESS]:0.0 (Windows only)
 ```console
 docker build -t kemekaze/vdodv .
 ```
-## Current version
+## Get Current Version
 ```console
 docker pull kemekaze/vdodv
 ```
