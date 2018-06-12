@@ -4,11 +4,11 @@
 CID=[1-254]
 WIN_DISPLAY=[YOUR IP ADDRESS]:0.0 (Windows only)
 ```
-## Install
+## How to build
 ```console
 docker build -t kemekaze/vdodv .
 ```
-## Get Current Version
+## The latest version
 ```console
 docker pull kemekaze/vdodv
 ```
