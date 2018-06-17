@@ -60,11 +60,6 @@ RUN mkdir build \
  && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON .. \
  && make vDODV
 
-ADD ./tests /tests
-RUN mkdir /tests/build \
- && cd /tests/build \
- && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ../input \
- && make vDODV-test-input
 
 ADD ./model/opendlv.lynx/ /model
 RUN mkdir /model/build \
@@ -80,6 +75,17 @@ RUN mkdir /model/build \
  && make
 
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/opendlv.lynx/lib
+
+ADD ./tests /tests
+RUN mkdir /tests/build && mkdir /tests/build/input \
+ && cd /tests/build/input \
+ && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ../../input \
+ && make vDODV-test-input
+
+ RUN mkdir /tests/build/path \
+  && cd /tests/build/path \
+  && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ../../path \
+  && make vDODV-test-path
 
 #CMD ["./build/vDODV"]
 #CMD ["./lib/vdrift/build/vdrift"]
