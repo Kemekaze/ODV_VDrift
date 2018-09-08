@@ -1,0 +1,8 @@
+sim-lynx-bicyclemodel.mass = 1510.0
+sim-lynx-bicyclemodel.momentOfInertiaZ = 0.25
+sim-lynx-bicyclemodel.length = 4.2
+sim-lynx-bicyclemodel.frontToCog = 1.8
+sim-lynx-bicyclemodel.frictionCoefficient = 1.0
+sim-lynx-bicyclemodel.magicFormulaCAlpha = 0.1
+sim-lynx-bicyclemodel.magicFormulaC = 0.2
+sim-lynx-bicyclemodel.magicFormulaE = 0.2

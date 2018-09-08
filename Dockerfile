@@ -40,6 +40,10 @@ RUN apt-get update \
 #    opendavinci-oddatastructuregenerator \
 #    opendavinci-odcandatastructuregenerator \
  && apt-get autoremove -y
+ ADD ./config /config
+
+ #FIX FOR SDL2 LIB
+ RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv /config/sdl2-config.cmake /usr/lib/x86_64-linux-gnu/cmake/SDL2/.
 
  ADD ./opendlv.core/ /opendlv.core
  RUN mkdir /opendlv.core/build \
@@ -51,10 +55,6 @@ ENV HOME /app
 ENV USRHOME = /root
 
 ADD ./app /app
-#FIX FOR SDL2 LIB
-RUN rm /usr/lib/x86_64-linux-gnu/cmake/SDL2/sdl2-config.cmake && mv ./config/sdl2-config.cmake /usr/lib/x86_64-linux-gnu/cmake/SDL2/.
-
-
 RUN mkdir build \
  && cd build \
  && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON .. \
@@ -77,10 +77,11 @@ RUN mkdir /model/build \
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/opendlv.lynx/lib
 
 ADD ./tests /tests
-RUN mkdir /tests/build && mkdir /tests/build/input \
- && cd /tests/build/input \
- && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ../../input \
- && make vDODV-test-input
+RUN mkdir /tests/build
+# && mkdir /tests/build/input \
+# && cd /tests/build/input \
+# && cmake -D CMAKE_BUILD_TYPE=debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ../../input \
+# && make vDODV-test-input
 
  RUN mkdir /tests/build/path \
   && cd /tests/build/path \

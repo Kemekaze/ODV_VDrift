@@ -33,7 +33,9 @@ BicycleModel::BicycleModel(int32_t const &a_argc, char **a_argv) :
   m_groundAccelerationMutex{},
   m_groundSteeringAngleMutex{},
   m_groundAcceleration{0.0},
-  m_groundSteeringAngle{0.0}
+  m_groundSteeringAngle{0.0},
+  frictionCoefficient{1.0},
+  reset(false)
 {
 }
 
@@ -44,19 +46,41 @@ BicycleModel::~BicycleModel()
 
 void BicycleModel::nextContainer(odcore::data::Container &a_container)
 {
-  std::cout << "[MODEL][R]["<< a_container.getDataType() <<"]" << std::endl;
   if (a_container.getDataType() == opendlv::proxy::GroundDecelerationRequest::ID()) {
     odcore::base::Lock l(m_groundAccelerationMutex);
     auto groundDeceleration = a_container.getData<opendlv::proxy::GroundDecelerationRequest>();
     m_groundAcceleration = -groundDeceleration.getGroundDeceleration();
+    //std::cout << "[MODEL][DECELERATION][" << std::to_string(m_groundAcceleration) << "]" << std::endl;
   } else if (a_container.getDataType() == opendlv::proxy::GroundAccelerationRequest::ID()) {
     odcore::base::Lock l(m_groundAccelerationMutex);
     auto groundAcceleration = a_container.getData<opendlv::proxy::GroundAccelerationRequest>();
     m_groundAcceleration = groundAcceleration.getGroundAcceleration();
+    //std::cout << "[MODEL][ACCELERATION][" << std::to_string(m_groundAcceleration) << "]" << std::endl;
   } else if (a_container.getDataType() == opendlv::proxy::GroundSteeringRequest::ID()) {
     odcore::base::Lock m(m_groundSteeringAngleMutex);
     auto groundSteeringAngle = a_container.getData<opendlv::proxy::GroundSteeringRequest>();
     m_groundSteeringAngle = groundSteeringAngle.getGroundSteering();
+    //std::cout << "[MODEL][STEERING][" << std::to_string(m_groundSteeringAngle) << "]" << std::endl;
+  }else if (a_container.getDataType() == opendlv::sim::scenario::Scenario::ID()) {
+    odcore::base::Lock m(m_groundSteeringAngleMutex);
+    odcore::base::Lock l(m_groundAccelerationMutex);
+    auto scenario = a_container.getData<opendlv::sim::scenario::Scenario>();
+    if(scenario.getAction() == 3){
+      //std::cout << "[MODEL][RESETING]" << std::endl;
+      reset = true;
+      frictionCoefficient = 1.0;
+    }
+  }else if (a_container.getDataType() == opendlv::sim::scenario::Error::ID()) {
+    odcore::base::Lock m(m_groundSteeringAngleMutex);
+    odcore::base::Lock l(m_groundAccelerationMutex);
+    auto error = a_container.getData<opendlv::sim::scenario::Error>();
+    if(error.getErrorId() == 1){
+      //std::cout << "[MODEL][ERROR][FRICTION]" << std::to_string(error.getValue()) << std::endl;
+      frictionCoefficient = error.getValue();
+    }else if(error.getErrorId() == 2){
+      //std::cout << "[MODEL][ERROR][STEERING]" << std::to_string(error.getValue()) << std::endl;
+      m_groundSteeringAngle = error.getValue();
+    }
   }
 }
 
@@ -70,7 +94,7 @@ odcore::data::dmcp::ModuleExitCodeMessage::ModuleExitCode BicycleModel::body()
   double const length = kv.getValue<double>("sim-lynx-bicyclemodel.length");
   double const frontToCog = kv.getValue<double>("sim-lynx-bicyclemodel.frontToCog");
   double const rearToCog = length - frontToCog;
-  double const frictionCoefficient = kv.getValue<double>("sim-lynx-bicyclemodel.frictionCoefficient");
+  frictionCoefficient = kv.getValue<double>("sim-lynx-bicyclemodel.frictionCoefficient");
 
   double const magicFormulaCAlpha = kv.getValue<double>("sim-lynx-bicyclemodel.magicFormulaCAlpha");
   double const magicFormulaC = kv.getValue<double>("sim-lynx-bicyclemodel.magicFormulaC");
@@ -90,12 +114,29 @@ odcore::data::dmcp::ModuleExitCodeMessage::ModuleExitCode BicycleModel::body()
 
     double groundAccelerationCopy;
     double groundSteeringAngleCopy;
+    double frictionCoefficientCopy;
+    bool resetCopy;
     {
       odcore::base::Lock l(m_groundAccelerationMutex);
       odcore::base::Lock m(m_groundSteeringAngleMutex);
+
+      resetCopy = reset;
+      if(resetCopy){
+        reset = false;
+        m_groundAcceleration = 0;
+        m_groundSteeringAngle = 0;
+        longitudinalSpeed = 0.1;
+        lateralSpeed = 0.0;
+        yawRate = 0.0;
+      }
+
+
       groundAccelerationCopy = m_groundAcceleration;
       groundSteeringAngleCopy = m_groundSteeringAngle;
+      frictionCoefficientCopy = frictionCoefficient;
+
     }
+
 
     double slipAngleFront = groundSteeringAngleCopy - std::atan(
         (lateralSpeed + frontToCog * yawRate) / std::abs(longitudinalSpeed));
@@ -106,9 +147,9 @@ odcore::data::dmcp::ModuleExitCodeMessage::ModuleExitCode BicycleModel::body()
     double forceRearZ = mass * g * (length / (frontToCog + length));
 
     double forceFrontY = magicFormula(slipAngleFront, forceFrontZ,
-        frictionCoefficient, magicFormulaCAlpha, magicFormulaC, magicFormulaE);
+        frictionCoefficientCopy, magicFormulaCAlpha, magicFormulaC, magicFormulaE);
     double forceRearY = magicFormula(slipAngleRear, forceRearZ,
-        frictionCoefficient, magicFormulaCAlpha, magicFormulaC, magicFormulaE);
+        frictionCoefficientCopy, magicFormulaCAlpha, magicFormulaC, magicFormulaE);
 
     double longitudinalSpeedDot = groundAccelerationCopy -
       forceFrontY * std::sin(groundSteeringAngleCopy) / mass +
@@ -132,7 +173,7 @@ odcore::data::dmcp::ModuleExitCodeMessage::ModuleExitCode BicycleModel::body()
     kinematicState.setYawRate(yawRate);
 
     odcore::data::Container c(kinematicState);
-    std::cout << "[MODEL][S]["<< opendlv::sim::KinematicState::ID() <<"][" << kinematicState.getVx() <<"][" << kinematicState.getVy() <<"][" << kinematicState.getYawRate() <<"]"<<std::endl;
+    //std::cout << "[MODEL][S]["<< opendlv::sim::KinematicState::ID() <<"][" << kinematicState.getVx() <<"][" << kinematicState.getVy() <<"][" << kinematicState.getYawRate() <<"]"<<std::endl;
     getConference().send(c);
   }
   return odcore::data::dmcp::ModuleExitCodeMessage::OKAY;

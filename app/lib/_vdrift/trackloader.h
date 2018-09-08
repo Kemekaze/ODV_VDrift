@@ -81,6 +81,7 @@ public:
 	int GetNumLoaded() const { return numloaded; }
 
 private:
+	static bool debug;
 	ContentManager & content;
 	DynamicsWorld & world;
 	Track::Data & data;

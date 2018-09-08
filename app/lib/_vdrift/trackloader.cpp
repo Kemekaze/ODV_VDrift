@@ -74,7 +74,7 @@ static btIndexedMesh GetIndexedMesh(const Model & model)
 	mesh.m_vertexType = PHY_FLOAT;
 	return mesh;
 }
-
+bool Track::Loader::debug = false;
 struct Track::Loader::Object
 {
 	std::tr1::shared_ptr<Model> model;
@@ -146,11 +146,11 @@ bool Track::Loader::BeginLoad()
 {
 	Clear();
 
-	info_output << "Loading track from path: " << trackpath << std::endl;
+	if(debug) info_output << "Loading track from path: " << trackpath << std::endl;
 
 	if (!LoadSurfaces())
 	{
-		info_output << "No Surfaces File. Continuing with standard surfaces" << std::endl;
+		if(debug) info_output << "No Surfaces File. Continuing with standard surfaces" << std::endl;
 	}
 
 	if (!LoadRoads())
@@ -417,7 +417,7 @@ Track::Loader::body_iterator Track::Loader::LoadBody(const PTree & cfg)
 	}
 	else
 	{
-		info_output << "Failed to load body " << cfg.value() << " model " << model_name << std::endl;
+		if(debug) info_output << "Failed to load body " << cfg.value() << " model " << model_name << std::endl;
 		return bodies.end();
 	}
 
@@ -884,7 +884,7 @@ bool Track::Loader::LoadSurfaces()
 		surf_cfg.get("RollingDrag", temp, error_output);
 		surface.rollingDrag = temp;
 	}
-	info_output << "Loaded surfaces file, " << data.surfaces.size() << " surfaces." << std::endl;
+	if(debug) info_output << "Loaded surfaces file, " << data.surfaces.size() << " surfaces." << std::endl;
 
 	return true;
 }
@@ -1111,7 +1111,7 @@ bool Track::Loader::LoadLapSections(const PTree & info)
 
 	if (data.lap.empty())
 	{
-		info_output << "No lap sequence found. Lap timing will not be possible." << std::endl;
+		if(debug) info_output << "No lap sequence found. Lap timing will not be possible." << std::endl;
 		return true;
 	}
 
@@ -1170,6 +1170,6 @@ bool Track::Loader::LoadLapSections(const PTree & info)
 		curr_patch = curr_patch->next_patch;
 	}
 
-	info_output << "Track timing sectors: " << lapmarkers << std::endl;
+	if(debug) info_output << "Track timing sectors: " << lapmarkers << std::endl;
 	return true;
 }

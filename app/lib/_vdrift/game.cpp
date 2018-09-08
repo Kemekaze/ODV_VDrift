@@ -74,6 +74,7 @@ static T cast(const std::string &str) {
 	is >> t;
 	return t;
 }
+bool Game::debug = false;
 
 Game::Game(std::ostream & info_out, std::ostream & error_out) :
 	info_output(info_out),
@@ -122,7 +123,7 @@ Game::Game(std::ostream & info_out, std::ostream & error_out) :
 	carcontrols_local.first = NULL;
 	dynamics.setContactAddedCallback(&CarDynamics::WheelContactCallback);
 	RegisterActions();
-	//this->ch = ch;
+
 }
 
 Game::~Game()
@@ -162,6 +163,26 @@ void Game::Start(std::list <std::string> & args)
 	{
 		return;
 	}
+	cluon::OD4Session od4{base_cid};
+	od4_session = &od4;
+	od4_session->dataTrigger(opendlv::sim::scenario::Scenario::ID(), [this](cluon::data::Envelope &&envelope){
+
+		mu_n.lock();
+		mu_m.lock();
+		mu_n.unlock();
+		scenario = cluon::extractMessage<opendlv::sim::scenario::Scenario>(std::move(envelope));
+		mu_m.unlock();
+  });
+	int car_num = 1;
+	car_sessions.reserve(car_num);
+	for (int c = 0; c < car_num; c++) {
+		uint16_t cid = base_cid + ((uint16_t) c);
+		CluonHandler* ch = new CluonHandler(cid);
+		car_sessions.push_back(ch);
+	}
+
+
+
 
 	info_output << "Starting VDrift: " << VERSION << ", Revision: " << REVISION << ", O/S: " << OS_NAME << std::endl;
 
@@ -870,9 +891,11 @@ void Game::Tick(float deltat)
         deltat = maxtime;
 
 	target_time += deltat;
-
 	http.Tick();
-
+	mu_l.lock();
+	mu_n.lock();
+	mu_m.lock();
+	mu_n.unlock();
 	// Increment game logic by however many tick periods have passed since the last GAME::Tick...
 	while (target_time - timestep * frame > timestep && curticks < maxticks)
 	{
@@ -882,6 +905,8 @@ void Game::Tick(float deltat)
 
 		curticks++;
 	}
+	mu_m.unlock();
+	mu_l.unlock();
 
 	// Debug draw dynamics
 	if (dynamics_drawmode && track.Loaded())
@@ -922,8 +947,9 @@ void Game::AdvanceGameLogic()
 			window.GetH(),
 			settings.GetButtonRamp(),
 			settings.GetHGateShifter());
-
 	ProcessGUIInputs();
+
+	ProcessOD4Events();
 
 	ProcessGameInputs();
 
@@ -981,6 +1007,37 @@ void Game::AdvanceGameLogic()
 	//PROFILER.beginBlock("force-feedback");
 	UpdateForceFeedback(timestep);
 	//PROFILER.endBlock("force-feedback");
+}
+
+void Game::ProcessOD4Events(){
+
+	switch (scenario.action()) {
+		case 1:
+			//std::cout << "GAMESTATE: NEW GAME" << '\n';
+			settings.SetTrack(scenario.track());
+			std::thread ([this]{
+				while(!track.Loaded()){
+					usleep(1000000);
+				}
+				usleep(3000000);
+				scenario.action(2);
+				od4_session->send(scenario);
+			}).detach();
+			if(!NewGame(false, false,5)){
+				LoadGarage();
+				scenario.action(5);
+				//std::cout << "GAMESTATE: UNABLE TO LOAD" << '\n';
+				od4_session->send(scenario);
+			}
+			break;
+		case 3:
+			LoadGarage();
+			scenario.action(4);
+			//std::cout << "GAMESTATE: EXIT" << '\n';
+			od4_session->send(scenario);
+			break;
+	}
+	scenario.action(0);
 }
 
 /* Process inputs used only for higher level game functions... */
@@ -1478,7 +1535,13 @@ void Game::UpdateCarInputs(int carid)
 
 
 
-
+	if(car_sess->isRunning()){
+		float yaw;
+		float pitch;
+		float roll;
+		rot.GetEulerZYX(yaw,pitch,roll);
+		car_sess->updateFrame(pos[0],pos[1],pos[2],roll,pitch,yaw);
+	}
 	/*if(this->ch->isRunning()){
 		//opendlv::sim::Frame f = car.getFrame(pos,rot);
 		opendlv::sim::Frame f;
@@ -1526,7 +1589,6 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 {
 	// This should clear out all data.
 	LeaveGame();
-
 	// Cache number of laps for gui.
 	race_laps = num_laps;
 
@@ -1538,7 +1600,6 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 
 	// Set track, car config file.
 	std::string trackname = settings.GetTrack();
-
 	if (playreplay)
 	{
 		// Load replay.
@@ -1557,7 +1618,6 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 		car_info = replay.GetCarInfo();
 		cars_num = car_info.size();
 	}
-
 	// Load track.
 	if (!LoadTrack(trackname))
 	{
@@ -1568,7 +1628,7 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 	car_dynamics.reserve(cars_num);
 	car_graphics.reserve(cars_num);
 	car_sounds.reserve(cars_num);
-	car_sessions.reserve(cars_num);
+
 	for (size_t i = 0; i < cars_num; ++i)
 	{
 		if (!LoadCar(car_info[i], track.GetStart(i).first, track.GetStart(i).second, sound.Enabled())){
@@ -1592,7 +1652,6 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 		if (carcontrols_local.first == &car_dynamics[i])
 			timer.SetPlayerCarId(i);
 	}
-
 	// bind vertex data
 	std::vector<SceneNode *> nodes;
 	nodes.push_back(&track.GetRacinglineNode());
@@ -1604,18 +1663,15 @@ bool Game::NewGame(bool playreplay, bool addopponents, int num_laps)
 	}
 	graphics->BindStaticVertexData(nodes);
 
-
 	// Set up GUI.
 	gui.SetInGame(true);
 	gui.Deactivate();
-
 	ShowHUD(true);
 
 	if (settings.GetMouseGrab())
 	{
 		window.ShowMouseCursor(false);
 	}
-
 	// Record a replay.
 	if (settings.GetRecordReplay() && !playreplay)
 	{
@@ -1723,10 +1779,8 @@ bool Game::LoadCar(
 	}
 
 	car_dynamics.push_back(CarDynamics());
-	uint16_t cid = base_cid + ((uint16_t) car_dynamics.size()-1);
-	info_output << " CID: " << cid << std::endl;
-	CluonHandler* ch = new CluonHandler(cid);
-	car_sessions.push_back(ch);
+
+
 	CarDynamics & car = car_dynamics[car_dynamics.size() - 1];
 	if (!car.Load(
 		*carconf, cardir, info.tire,
@@ -1753,7 +1807,7 @@ bool Game::LoadCar(
 	car.SetABS(settings.GetABS() || isai);
 	car.SetTCS(settings.GetTCS() || isai);
 
-	info_output << "Car loading was successful: " << info.name << std::endl;
+	if(Game::debug) info_output << "Car loading was successful: " << info.name << std::endl;
 
 	return true;
 }
@@ -1899,7 +1953,7 @@ void Game::SetGarageCar()
 	car_dynamics.clear();
 	car_graphics.clear();
 	car_sounds.clear();
-	car_sessions.clear();
+	//car_sessions.clear();
 
 	// load car
 	std::vector<SceneNode *> nodes;

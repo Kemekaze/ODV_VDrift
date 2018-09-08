@@ -397,6 +397,9 @@ public:
 	{
 		res_override = value;
 	}
+	void SetTrack(std::string value){
+		track = value;
+	}
 
 private:
 	std::vector<unsigned> resolution;

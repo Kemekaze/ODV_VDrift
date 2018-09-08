@@ -44,7 +44,7 @@ set(LIBRARIES
   ${Wt_LIBRARY} ${Wt_HTTP_LIBRARY} ${Wt_EXT_LIBRARY}
   ${ODVDCFSD18_LIBRARIES}
  )
- 
+
 ### MICROSERVICE BEGIN ###
 add_subdirectory(bicyclemodel)
 ### MICROSERVICE END ###

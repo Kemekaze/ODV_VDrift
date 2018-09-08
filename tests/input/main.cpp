@@ -42,6 +42,8 @@ int main(int argc, char * argv[]) {
   if(od4.isRunning()){
     std::cout << "OD4Session running" << std::endl;
     std::cout << "Waiting for commands" << std::endl;
+    opendlv::body::ComponentInfo ci;
+    od4.send(ci);
   }else{
     std::cout << "OD4Session is not running" << std::endl;
   }
@@ -55,6 +57,7 @@ int main(int argc, char * argv[]) {
   opendlv::proxy::GroundSteeringRequest steer;
   opendlv::proxy::GroundAccelerationRequest acc;
   opendlv::proxy::GroundDecelerationRequest dec;
+  opendlv::sim::scenario::Scenario scenario;
   steer.groundSteering(0.0);
   acc.groundAcceleration(0.0);
   dec.groundDeceleration(0.0);
@@ -67,7 +70,10 @@ int main(int argc, char * argv[]) {
       case SDL_KEYDOWN:
         switch (event.key.keysym.sym){
             case SDLK_q:
-              quit = true;
+              scenario.scenario(1);
+              scenario.run(1);
+              scenario.action(2);
+              od4.send(scenario);
               break;
             case SDLK_LEFT:
               steer.groundSteering(steer.groundSteering() - increment);
@@ -92,6 +98,13 @@ int main(int argc, char * argv[]) {
                 dec.groundDeceleration(dec.groundDeceleration() + increment);
                 od4.send(dec);
               }
+              break;
+            case SDLK_s:
+
+              scenario.scenario(1);
+              scenario.run(1);
+              scenario.action(1);
+              od4.send(scenario);
               break;
         }
         std::cout << "[INPUT][S][" << steer.groundSteering() << "][" << (acc.groundAcceleration()-dec.groundDeceleration())  << "]" << std::endl;

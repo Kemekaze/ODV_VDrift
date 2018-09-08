@@ -12,6 +12,7 @@ find_package(SDL2 REQUIRED)
 
 include_directories(
  SYSTEM ${CMAKE_BINARY_DIR}
+ ${CMAKE_CURRENT_SOURCE_DIR}/includes
  ${CLUON_INCLUDE_DIRS}
  /app/lib
  /app/build
@@ -20,7 +21,11 @@ include_directories(
 
 add_executable(${PROJECT_NAME}
 /app/build/messages.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/test_error.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/test_scenario.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/test_run.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/update_car.cpp
 
 )
 

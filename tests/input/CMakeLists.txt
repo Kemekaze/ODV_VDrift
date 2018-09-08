@@ -17,12 +17,7 @@ include_directories(
  /app/build
 )
 
-#add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/messages.cpp
-#                   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-#                   COMMAND cluon-msc --cpp-sources --cpp-add-include-file=messages.hpp --out=${CMAKE_BINARY_DIR}/messages.cpp ${CMAKE_BINARY_DIR}/config/messages.odvd
-#                   COMMAND cluon-msc --cpp-headers --out=${CMAKE_BINARY_DIR}/messages.hpp ${CMAKE_BINARY_DIR}/config/messages.odvd
-#                   DEPENDS ${CMAKE_BINARY_DIR}/config/messages.odvd)
-#
+
 add_executable(${PROJECT_NAME}
 /app/build/messages.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp

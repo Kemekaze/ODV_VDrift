@@ -83,7 +83,7 @@ ExternalProject_Add (libodvdcfsd18
 
 ### NAMESPACE BEGIN ###
 ExternalProject_Add (sim-lynx
-  DEPENDS libodvdcfsd18
+#  DEPENDS libodvdcfsd18
   DOWNLOAD_COMMAND ""
   UPDATE_COMMAND ""
   SOURCE_DIR "${CMAKE_SOURCE_DIR}/code/sim-lynx"

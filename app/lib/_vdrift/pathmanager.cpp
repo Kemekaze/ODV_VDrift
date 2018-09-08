@@ -90,7 +90,7 @@ void PathManager::Init(std::ostream & info_output, std::ostream & error_output)
 	else
 		settings_path = home_directory + "\\VDrift";
 #else
-	settings_path = home_directory + "/" + SETTINGS_DIR;
+	settings_path = "/" + std::string(SETTINGS_DIR); //settings_path = home_directory + "/" + SETTINGS_DIR;
 #endif
 
 	temporary_folder = settings_path + "/tmp";

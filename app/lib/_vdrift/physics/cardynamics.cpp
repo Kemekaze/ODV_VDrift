@@ -1342,6 +1342,8 @@ btVector3 CarDynamics::ApplySuspensionForceToBody ( int i, btScalar dt, btVector
 		}
 	}
 
+	//std::cout << "F: " << force[0] << "," << force[1] << "," << force[2] << std::endl;
+	//std::cout << "S: " << suspension_force[0] << "," << suspension_force[1] << "," << suspension_force[2] << std::endl;
 	force = force + suspension_force;
 	torque = torque + suspension_force_application_point.cross(suspension_force);
 

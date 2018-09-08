@@ -50,6 +50,9 @@ class BicycleModel : public odcore::base::module::TimeTriggeredConferenceClientM
   odcore::base::Mutex m_groundSteeringAngleMutex;
   double m_groundAcceleration;
   double m_groundSteeringAngle;
+
+  double frictionCoefficient;
+  bool reset;
 };
 
 }

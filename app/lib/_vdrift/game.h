@@ -76,6 +76,7 @@ public:
 
 	void Start(std::list <std::string> & args);
 
+	static bool debug;;
 private:
 	void End();
 
@@ -109,6 +110,8 @@ private:
 
 	/// Check eventsystem state and update GUI
 	void ProcessGUIInputs();
+
+	void ProcessOD4Events();
 
 	void ProcessGameInputs();
 
@@ -304,6 +307,7 @@ private:
 	bool dumpfps;
 	bool pause;
 
+
 	std::vector <EventSystem::Joystick> controlgrab_joystick_state;
 	std::pair <int,int> controlgrab_mouse_coords;
 	CarControlMap::Control controlgrab_control;
@@ -354,8 +358,13 @@ private:
 	double ff_update_time;
 
 	uint16_t base_cid;
+  cluon::OD4Session * od4_session;
+	std::mutex mu_scenario;
+	std::mutex mu_m;
+	std::mutex mu_n;
+	std::mutex mu_l;
 
-
+	opendlv::sim::scenario::Scenario scenario;
 
 };
 

@@ -37,13 +37,14 @@ include_directories(
 
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/messages.cpp
                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                   COMMAND cluon-msc --cpp-sources --cpp-add-include-file=messages.hpp --out=${CMAKE_BINARY_DIR}/messages.cpp ${CMAKE_CURRENT_SOURCE_DIR}/config/messages.odvd
-                   COMMAND cluon-msc --cpp-headers --out=${CMAKE_BINARY_DIR}/messages.hpp ${CMAKE_CURRENT_SOURCE_DIR}/config/messages.odvd
-                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/config/messages.odvd)
+                   COMMAND cluon-msc --cpp-sources --cpp-add-include-file=messages.hpp --out=${CMAKE_BINARY_DIR}/messages.cpp /config/messages.odvd
+                   COMMAND cluon-msc --cpp-headers --out=${CMAKE_BINARY_DIR}/messages.hpp /config/messages.odvd
+                   DEPENDS /config/messages.odvd)
 
 add_executable(${PROJECT_NAME}
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/physics/cardynamics.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/game.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/trackloader.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/vdrift.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/cluon_handler.cpp
@@ -176,7 +177,6 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/svn_sourceforge.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/timer.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/toggle.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/track.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/trackloader.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/trackmap.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/updatemanager.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/_vdrift/utils.cpp
