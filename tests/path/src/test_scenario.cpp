@@ -115,13 +115,15 @@ void TestScenario::scenarioEvent(opendlv::sim::scenario::Scenario scenario){
           str += "\n";
           out << str;
         }
+        out.close();
+        //std::cout <<"-----------------------GENERATING ERRORS-------------------------" << std::endl;
         generateErrors();
 
       }
 
 
       if(current_run < total_runs){
-
+        std::cout << "---------------------NEXT-----------------------" << std::endl;
         is_base_run = false;
         usleep(5000000);
         runs.at(current_test_case).start();
@@ -163,7 +165,8 @@ void TestScenario::frameEvent(opendlv::sim::scenario::Frame frame){
 TestError TestScenario::generateRandomFitest(int fittest){
   std::vector<TestError> tmp_errors;
   for (int i = 0; i < 5; i++) {
-      tmp_errors.push_back(run_errors.at(error_gen(mt)));
+      int r = testcase_gen(mt);
+      tmp_errors.push_back(run_errors.at(r));
   }
   auto fittest_it = std::max_element(tmp_errors.begin(), tmp_errors.end(), [](TestError a, TestError b){
       return a.deviation() < b.deviation();
@@ -173,7 +176,6 @@ TestError TestScenario::generateRandomFitest(int fittest){
 }
 void TestScenario::generateErrors(){
   std::vector<TestError> new_run_errors;
-
   for(int e = 0; e < test_cases; e++){
     int error_type = error_gen(mt) % 2 +1;
     float error_value = 0.0;
@@ -196,7 +198,7 @@ void TestScenario::generateErrors(){
       int fittest_pos = std::distance(run_errors.begin(), fittest_it);
       TestError fittest = run_errors.at(fittest_pos);
       new_run_errors[0] = fittest;
-      for (int i = 1; i< test_cases; ++i) {
+      for (int i = 1; i < test_cases; ++i) {
           TestError r1 = generateRandomFitest(fittest_pos);
           TestError r2 = generateRandomFitest(fittest_pos);
           r1.crossover(r2);

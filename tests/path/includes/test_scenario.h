@@ -91,6 +91,7 @@ class TestScenario{
     std::random_device rd;
     std::mt19937 mt;
     std::uniform_int_distribution<int> error_gen;
+    std::uniform_int_distribution<int> testcase_gen;
     std::uniform_real_distribution<float> friction_error_gen;
     std::uniform_real_distribution<float> steering_error_gen;
 
@@ -105,7 +106,8 @@ class TestScenario{
       base_run(0,this),
       mt(rd()),
       steering_error_gen(-0.1,0.1),
-      friction_error_gen(0.3,1.0)
+      friction_error_gen(0.3,1.0),
+      testcase_gen(0,test_cases-1)
       {
         initialize(runs);
       }
