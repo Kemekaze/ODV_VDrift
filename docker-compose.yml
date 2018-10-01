@@ -1,12 +1,10 @@
 version: '3'
 services:
   odsupercomponent:
-    build: .
     image: kemekaze/vdodv:v0.1
     network_mode: "host"
     command: "odsupercomponent --cid=${CID} --configuration=/config/configuration"
   vDODV:
-    build: .
     image: kemekaze/vdodv:v0.1
     network_mode: "host"
     environment:
@@ -16,7 +14,6 @@ services:
   vDODV-test-path:
     depends_on:
       - vDODV
-    build: .
     image: kemekaze/vdodv:v0.1
     network_mode: "host"
     volumes:
@@ -27,7 +24,6 @@ services:
     depends_on:
       - vDODV
       - odsupercomponent
-    build: .
     image: kemekaze/vdodv:v0.1
     network_mode: "host"
     command: "/opt/opendlv.lynx/bin/opendlv-sim-lynx-bicyclemodel --cid=${CID} --freq=20 "
