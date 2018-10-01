@@ -10,7 +10,7 @@ services:
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
       - DISPLAY=${WIN_DISPLAY}
-    command: "/app/build/vDODV --cid ${CID}"
+    command: "/app/build/vDODV --cid ${CID}  -disableGUI"
   vDODV-test-path:
     depends_on:
       - vDODV
