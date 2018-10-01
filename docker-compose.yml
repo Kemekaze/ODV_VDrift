@@ -2,12 +2,12 @@ version: '3'
 services:
   odsupercomponent:
     build: .
-    image: kemekaze/vdodv
+    image: kemekaze/vdodv:v0.1
     network_mode: "host"
     command: "odsupercomponent --cid=${CID} --configuration=/config/configuration"
   vDODV:
     build: .
-    image: kemekaze/vdodv
+    image: kemekaze/vdodv:v0.1
     network_mode: "host"
     environment:
       - SDL_VIDEO_X11_VISUALID=0x022
@@ -17,7 +17,7 @@ services:
     depends_on:
       - vDODV
     build: .
-    image: kemekaze/vdodv
+    image: kemekaze/vdodv:v0.1
     network_mode: "host"
     volumes:
         - ./runs/:/runs
@@ -28,6 +28,6 @@ services:
       - vDODV
       - odsupercomponent
     build: .
-    image: kemekaze/vdodv
+    image: kemekaze/vdodv:v0.1
     network_mode: "host"
     command: "/opt/opendlv.lynx/bin/opendlv-sim-lynx-bicyclemodel --cid=${CID} --freq=20 "
