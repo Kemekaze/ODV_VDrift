@@ -306,6 +306,7 @@ private:
 	bool benchmode;
 	bool dumpfps;
 	bool pause;
+	bool disable_gui;
 
 
 	std::vector <EventSystem::Joystick> controlgrab_joystick_state;

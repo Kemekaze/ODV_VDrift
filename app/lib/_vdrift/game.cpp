@@ -119,7 +119,8 @@ Game::Game(std::ostream & info_out, std::ostream & error_out) :
 	particle_timer(0),
 	track(),
 	replay(timestep),
-	http("/tmp")
+	http("/tmp"),
+	disable_gui(false)
 {
 	carcontrols_local.first = NULL;
 	dynamics.setContactAddedCallback(&CarDynamics::WheelContactCallback);
@@ -764,6 +765,15 @@ bool Game::ParseArguments(std::list <std::string> & args)
 		error_output << "Missing parameter --cid [0-254]" << std::endl;
 		continue_game = false;
 	}
+
+	if (argmap.find("-disableGUI") != argmap.end())
+	{
+		info_output << "Disabling gui" << std::endl;
+		disable_gui = true;
+	}
+	arghelp["-disableGUI"] = "Render the game";
+
+
 	return continue_game;
 }
 
@@ -866,7 +876,8 @@ void Game::MainLoop()
 		// Do CPU intensive stuff in parallel with the GPU...
 		Tick(eventsystem.Get_dt());
 
-		//Draw(eventsystem.Get_dt());
+		if(!disable_gui)
+			Draw(eventsystem.Get_dt());
 
 		eventsystem.EndFrame();
 

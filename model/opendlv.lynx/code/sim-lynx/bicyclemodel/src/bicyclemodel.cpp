@@ -75,10 +75,10 @@ void BicycleModel::nextContainer(odcore::data::Container &a_container)
     odcore::base::Lock l(m_groundAccelerationMutex);
     auto error = a_container.getData<opendlv::sim::scenario::Error>();
     if(error.getErrorId() == 1){
-      //std::cout << "[MODEL][ERROR][FRICTION]" << std::to_string(error.getValue()) << std::endl;
+      std::cout << "INSERTERROR[FRICTION]" << std::to_string(error.getValue()) << std::endl;
       frictionCoefficient = error.getValue();
     }else if(error.getErrorId() == 2){
-      //std::cout << "[MODEL][ERROR][STEERING]" << std::to_string(error.getValue()) << std::endl;
+      std::cout << "INSERTERROR[STEERING]" << std::to_string(error.getValue()) << std::endl;
       m_groundSteeringAngle = error.getValue();
     }
   }

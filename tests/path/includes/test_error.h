@@ -58,6 +58,10 @@ class TestError{
     int position();
     float value();
 
+    int type2();
+    int position2();
+    float value2();
+
 
 
 

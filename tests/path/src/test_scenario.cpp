@@ -61,15 +61,23 @@ void TestScenario::scenarioEvent(opendlv::sim::scenario::Scenario scenario){
       }else{
         usleep(4000000); //give vdrift some headroom;
         std::cout << "TESTCASE   ["
-                  << current_run << "/" << total_runs
+                  << (current_run + 1) << "/" << total_runs
                   << "]["
-                  << current_test_case << "/" << test_cases
-                  << "]["
+                  << (current_test_case + 1) << "/" << test_cases
+                  << "]" << std::endl;
+        std::cout << "TESTERROR  ["
                   << run_errors.at(current_test_case).type()
                   << "]["
                   << run_errors.at(current_test_case).position()
                   << "]["
                   << run_errors.at(current_test_case).value()
+                  << "]" << std::endl;
+        std::cout << "TESTERROR  ["
+                  << run_errors.at(current_test_case).type2()
+                  << "]["
+                  << run_errors.at(current_test_case).position2()
+                  << "]["
+                  << run_errors.at(current_test_case).value2()
                   << "]" << std::endl;
         std::thread (&TestRun::run,runs.at(current_test_case)).detach();
       }
@@ -84,15 +92,9 @@ void TestScenario::scenarioEvent(opendlv::sim::scenario::Scenario scenario){
         run_errors.at(current_test_case).deviation(getDeviation());
         runs.at(current_test_case).frames.clear();
         std::cout << "TESTRESULT ["
-                  << current_run << "/" << total_runs
+                  << (current_run + 1) << "/" << total_runs
                   << "]["
-                  << current_test_case << "/" << test_cases
-                  << "]["
-                  << run_errors.at(current_test_case).type()
-                  << "]["
-                  << run_errors.at(current_test_case).position()
-                  << "]["
-                  << run_errors.at(current_test_case).value()
+                  << (current_test_case + 1) << "/" << test_cases
                   << "]["
                   << std::to_string(run_errors.at(current_test_case).deviation())
                   << "]"
@@ -179,9 +181,13 @@ void TestScenario::generateErrors(){
   for(int e = 0; e < test_cases; e++){
     int error_type = error_gen(mt) % 2 +1;
     int error_type2 = 1;
-    if(error_type == 1) error_type = 2;
-    float error_value = friction_error_gen(mt);
-    float error_value2 = steering_error_gen(mt);
+    float error_value = steering_error_gen(mt);
+    float error_value2 = friction_error_gen(mt);
+    if(error_type == 1){
+       error_type2 = 2;
+       error_value = friction_error_gen(mt);
+       error_value2 = steering_error_gen(mt);
+    }
 
     TestError te(this, e, error_type, error_type2, error_gen(mt) ,error_gen(mt),error_value, error_value2);
     new_run_errors.push_back(te);

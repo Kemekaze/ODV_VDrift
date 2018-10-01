@@ -2,7 +2,7 @@
 
 void TestError::sendError(int action){
   int t = 0;
-  int v = 0;
+  float v = 0;
   if(action == _position){
     t = _type;
     v =_value;
@@ -87,4 +87,14 @@ int TestError::position(){
 }
 float TestError::value(){
   return _value;
+}
+
+int TestError::type2(){
+  return _type2;
+}
+int TestError::position2(){
+  return _position2;
+}
+float TestError::value2(){
+  return _value2;
 }
