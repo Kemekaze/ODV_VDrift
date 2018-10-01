@@ -178,16 +178,12 @@ void TestScenario::generateErrors(){
   std::vector<TestError> new_run_errors;
   for(int e = 0; e < test_cases; e++){
     int error_type = error_gen(mt) % 2 +1;
-    float error_value = 0.0;
-    switch (error_type) {
-      case 1:
-        error_value = friction_error_gen(mt);
-        break;
-      case 2:
-        error_value = steering_error_gen(mt);
-        break;
-    }
-    TestError te(this, e, error_type, error_gen(mt) ,error_value);
+    int error_type2 = 1;
+    if(error_type == 1) error_type = 2;
+    float error_value = friction_error_gen(mt);
+    float error_value2 = steering_error_gen(mt);
+
+    TestError te(this, e, error_type, error_type2, error_gen(mt) ,error_gen(mt),error_value, error_value2);
     new_run_errors.push_back(te);
   }
   if(run_errors.size() > 0){

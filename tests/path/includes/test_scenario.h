@@ -63,7 +63,6 @@ class TestScenario{
     float *error_results;
 
     std::vector<TestError> run_errors;
-
     TestRun base_run;
 
     void scenarioEvent(opendlv::sim::scenario::Scenario scenario);

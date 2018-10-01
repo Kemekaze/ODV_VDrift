@@ -36,7 +36,7 @@ services:
     volumes:
         - ./runs/:/runs
         - ./test_cases/:/test_cases
-    command: "/tests/build/path/vDODV-test-path --cid=${CID}"
+    command: "/tests/build/path/vDODV-test-path --cid=${CID} "
   vDODV-model:
     depends_on:
       - vDODV

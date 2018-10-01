@@ -17,6 +17,7 @@
 /*                                                                      */
 /************************************************************************/
 
+
 #include "game.h"
 #include "unittest.h"
 #include "definitions.h"
@@ -865,7 +866,7 @@ void Game::MainLoop()
 		// Do CPU intensive stuff in parallel with the GPU...
 		Tick(eventsystem.Get_dt());
 
-		Draw(eventsystem.Get_dt());
+		//Draw(eventsystem.Get_dt());
 
 		eventsystem.EndFrame();
 
@@ -917,7 +918,7 @@ void Game::Tick(float deltat)
 
 	if (dumpfps && curticks > 0 && frame % 100 == 0)
 	{
-		info_output << "Current FPS: " << eventsystem.GetFPS() << std::endl;
+		//info_output << "Current FPS: " << eventsystem.GetFPS() << std::endl;
 	}
 
 	UpdateParticleGraphics();
@@ -2021,7 +2022,8 @@ void Game::CalculateFPS()
 
 	std::ostringstream fpsstr;
 	fpsstr << "FPS: " << (int)fps_avg;
-
+	if (dumpfps && frame % 100 == 0)
+		info_output << "Current FPS: " << fps_avg << std::endl;
 	// Don't start looking an min/max until we've put out a few frames.
 	if (fps_min == 0 && frame > 20)
 	{
